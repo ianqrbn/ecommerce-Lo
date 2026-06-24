@@ -1,111 +1,148 @@
-import React from 'react';
-import { Heart, ShoppingCart } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Heart, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export function FeaturedProducts() {
-  const products = [
-    {
-      id: 1,
-      name: 'Anel de Prata Clássico',
-      price: 89.99,
-      image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=500',
-      category: 'Anéis'
-    },
-    {
-      id: 2,
-      name: 'Colar de Corrente Delicada',
-      price: 129.99,
-      image: 'https://images.unsplash.com/photo-1676329947145-99145926d3eb?q=80&w=1958&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      category: 'Colares'
-    },
-    {
-      id: 3,
-      name: 'Brincos de Cravejados',
-      price: 79.99,
-      image: 'https://plus.unsplash.com/premium_photo-1680181362119-5c9bf196805f?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      category: 'Brincos'
-    },
-    {
-      id: 4,
-      name: 'Pulseira de Prata',
-      price: 99.99,
-      image: 'https://images.unsplash.com/photo-1676291055501-286c48bb186f?q=80&w=990&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      category: 'Pulseiras'
-    },
-    {
-      id: 5,
-      name: 'Conjunto de Anéis de Prata',
-      price: 119.99,
-      image: 'https://images.unsplash.com/photo-1765614766038-d036c338f028?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      category: 'Anéis'
-    },
-    {
-      id: 6,
-      name: 'Colar de Pérolas com Pingente',
-      price: 149.99,
-      image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500',
-      category: 'Colares'
-    },
-    {
-      id: 7,
-      name: 'Conjunto de Brincos de Argola',
-      price: 69.99,
-      image: 'https://images.unsplash.com/photo-1765464281313-b3844388b316?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-      category: 'Brincos'
-    },
-    {
-      id: 8,
-      name: 'Bracelete Largo Moderno',
-      price: 159.99,
-      image: 'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=500',
-      category: 'Pulseiras'
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Referência para controlar o scroll do carrossel
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select(`
+          id, 
+          nome, 
+          preco, 
+          imagem_principal, 
+          cat_prod (
+            categorias (
+              nome
+            )
+          )
+        `)
+        .eq('ativo', true)
+        .limit(8);
+
+      if (error) {
+        console.error('Erro ao buscar produtos:', error);
+      } else {
+        setProducts(data || []);
+      }
+      setLoading(false);
     }
-];
+
+    fetchProducts();
+  }, []);
+
+  // Função para mover o carrossel
+  const scroll = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = direction === 'left' ? -300 : 300;
+      carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   return (
-    <section className="py-16 px-4 bg-vinho-50">
+    <section className="py-16 px-4 bg-white relative">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl mb-3">Nova Coleção</h2>
-          <p className="text-vinho-600">Peças escolhidas para você</p>
+          <h2 className="text-2xl md:text-3xl font-serif text-gray-900 mb-2">Coleção em Destaque</h2>
+          <p className="text-gray-500">Peças selecionadas para sua elegância</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <span className="text-gray-400">Carregando produtos...</span>
+          </div>
+        ) : (
+          <div className="relative group">
+            
+            {/* Botão de Voltar - Visível apenas no hover da área do carrossel no Desktop */}
+            <button 
+              onClick={() => scroll('left')}
+              className="absolute -left-4 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
+              aria-label="Anterior"
             >
-              <div className="relative aspect-square bg-vinho-100 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <button className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-md hover:bg-vinho-100 transition-colors opacity-0 group-hover:opacity-100">
-                  <Heart className="w-5 h-5 text-vinho-700" />
-                </button>
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="w-full bg-white text-vinho-900 py-2 rounded flex items-center justify-center gap-2 hover:bg-vinho-100 transition-colors text-sm">
-                    <ShoppingCart className="w-4 h-4" />
-                    Adicionar ao Carrinho
-                  </button>
-                </div>
-              </div>
-              <div className="p-4">
-                <p className="text-xs text-vinho-500 mb-1">{product.category}</p>
-                <h3 className="text-sm mb-2">{product.name}</h3>
-                <p className="text-lg">R${product.price}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+              <ChevronLeft className="w-6 h-6" />
+            </button>
 
-        <div className="text-center mt-12">
-          <button className="bg-vinho-700 text-white px-8 py-3 hover:bg-vinho-800 transition-colors">
-            Ver Todos os Produtos
+            {/* Container do Carrossel */}
+            <div 
+              ref={carouselRef}
+              className="flex gap-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Esconde a barra de rolagem no Firefox e IE
+            >
+              {products.map((product) => (
+                <div 
+                  key={product.id} 
+                  // Configuração de largura para os itens do carrossel (responsivo)
+                  className="group relative flex-none w-64 sm:w-72 snap-start"
+                >
+                  {/* Imagem */}
+                  <div className="relative aspect-[4/5] bg-gray-50 mb-4 overflow-hidden rounded-md">
+                    <img
+                      src={product.imagem_principal || 'https://via.placeholder.com/500'}
+                      alt={product.nome}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
+                    />
+                    
+                    {/* Ações Hover */}
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="bg-white rounded-full p-2 shadow-sm hover:text-vinho-700 transition-colors">
+                        <Heart className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <button className="w-full bg-vinho-700 text-white py-2.5 rounded text-sm font-medium hover:bg-vinho-800 transition-colors flex items-center justify-center gap-2">
+                        <ShoppingCart className="w-4 h-4" />
+                        Adicionar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Textos */}
+                  <div className="text-center mt-4">
+                    <p className="text-xs text-vinho-700 font-medium mb-1 uppercase tracking-widest">
+                      {product.cat_prod?.[0]?.categorias?.nome || 'Sem Categoria'}
+                    </p>
+                    <h3 className="text-sm text-gray-900 mb-1">{product.nome}</h3>
+                    <p className="text-sm font-medium text-gray-600">
+                      R$ {Number(product.preco).toFixed(2).replace('.', ',')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Botão de Avançar */}
+            <button 
+              onClick={() => scroll('right')}
+              className="absolute -right-4 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
+              aria-label="Próximo"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+        )}
+
+        <div className="text-center mt-8">
+          <button className="border border-vinho-400 text-gray-900 px-8 py-3 hover:bg-vinho-800 hover:text-white transition-colors text-sm tracking-wide">
+            VER TODOS OS PRODUTOS
           </button>
         </div>
       </div>
+
+      {/* Adicione este CSS globalmente (ex: index.css) se preferir, ou deixe aqui para garantir */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}} />
     </section>
   );
 }

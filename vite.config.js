@@ -2,9 +2,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    tailwindcss()
+  ],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {
@@ -55,6 +59,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    open: true,
+    host: true, // OBRIGATÓRIO PARA DOCKER: Permite acesso externo ao container
+    strictPort: true, // Se a porta 5173 estiver ocupada, o Vite não tentará outra, o que quebraria o mapeamento do Docker
+    watch: {
+      usePolling: true, // OBRIGATÓRIO PARA DOCKER (Windows/Mac): Força o Vite a verificar ativamente as mudanças nos arquivos
+    },
+    // Removi o "open: true" porque o Docker não tem um navegador embutido para abrir sozinho.
   },
 });
