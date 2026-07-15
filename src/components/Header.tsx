@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, ShoppingCart, Menu, X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export function Header() {
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -59,9 +64,60 @@ export function Header() {
 
             {/* Direita: Icons */}
             <div className="flex items-center gap-3 lg:gap-4">
-              <button className="text-white hover:text-vinho-100 transition">
-                <User className="w-5 h-5" />
-              </button>
+              {user ? (
+                <div className="relative">
+                  <button 
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className="flex items-center gap-2 text-white hover:text-vinho-100 transition focus:outline-none"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-vinho-400 flex items-center justify-center font-sans font-semibold text-xs border border-vinho-300">
+                      {profile?.nome ? profile.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : <User className="w-4 h-4" />}
+                    </div>
+                    <span className="hidden md:inline text-sm font-medium">
+                      {profile?.nome ? profile.nome.split(' ')[0] : 'Minha Conta'}
+                    </span>
+                  </button>
+
+                  {profileMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100 text-gray-800 font-sans">
+                      <div className="px-4 py-2 border-b border-gray-100 text-xs text-gray-500 font-medium">
+                        Olá, {profile?.nome ? profile.nome.split(' ')[0] : 'Cliente'}
+                      </div>
+                      <button 
+                        onClick={() => { setProfileMenuOpen(false); navigate('/perfil'); }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
+                      >
+                        Meu Perfil
+                      </button>
+                      <button 
+                        onClick={() => { setProfileMenuOpen(false); navigate('/pedidos'); }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
+                      >
+                        Meus Pedidos
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          setProfileMenuOpen(false);
+                          await signOut();
+                          navigate('/');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-red-600 font-medium border-t border-gray-100 transition cursor-pointer"
+                      >
+                        Sair da conta
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button 
+                  onClick={() => navigate('/login')}
+                  className="text-white hover:text-vinho-100 transition flex items-center gap-1 focus:outline-none cursor-pointer"
+                >
+                  <User className="w-5 h-5" />
+                  <span className="hidden md:inline text-sm font-medium">Entrar</span>
+                </button>
+              )}
+
               <button className="relative text-white hover:text-vinho-100 transition">
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (

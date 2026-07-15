@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Mail, Lock } from 'lucide-react'; // Usando lucide-react para padronizar
 import { useNavigate } from 'react-router-dom';
@@ -12,32 +12,53 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
 
-  const handleAuth = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleAuth = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  if (isSignUp) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { nome: nome }
+    try {
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { nome: nome }
+          }
+        });
+        if (error) {
+          alert(error.message);
+        } else {
+          // Se a sessão já estiver ativa (confirmação de e-mail desativada no Supabase), tenta criar o perfil
+          if (data?.user && data?.session) {
+            const { error: insertError } = await supabase.from('usuarios').insert([
+              { id: data.user.id, email: email, nome: nome }
+            ]);
+            if (insertError) {
+              console.error('Erro ao criar perfil:', insertError);
+            }
+            navigate('/');
+          } else {
+            alert('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar o cadastro (se aplicável) e faça login.');
+            setIsSignUp(false); // Redireciona para o formulário de login
+            setPassword(''); // Limpa a senha
+          }
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          alert(error.message);
+        } else {
+          // Redireciona para a rota correspondente à Landing Page (geralmente '/')
+          navigate('/'); 
+        }
       }
-    });
-    if (error) alert(error.message);
-    else alert('Verifique seu e-mail para confirmar o cadastro!');
-  } else {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert(error.message);
-    } else {
-      // Redireciona para a rota correspondente à Landing Page (geralmente '/')
-      navigate('/'); 
+    } catch (err: any) {
+      console.error('Erro inesperado durante a autenticação:', err);
+      alert('Ocorreu um erro inesperado: ' + (err.message || 'Verifique o console para mais detalhes.'));
+    } finally {
+      setLoading(false);
     }
-  }
-  
-  setLoading(false);
-};
+  };
 
   return (
     // Fundo cinza super claro para destacar o card branco
