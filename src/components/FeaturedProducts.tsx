@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Heart, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, ShoppingCart, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useCart } from '../contexts/CartContext';
 
 export function FeaturedProducts() {
-  const [products, setProducts] = useState([]);
+  const { addToCart } = useCart();
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addedItems, setAddedItems] = useState<{ [key: string]: boolean }>({});
   
   // Referência para controlar o scroll do carrossel
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -44,6 +47,14 @@ export function FeaturedProducts() {
       const scrollAmount = direction === 'left' ? -300 : 300;
       carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
+  };
+
+  const handleAddToCart = (product: any) => {
+    addToCart(product);
+    setAddedItems((prev) => ({ ...prev, [product.id]: true }));
+    setTimeout(() => {
+      setAddedItems((prev) => ({ ...prev, [product.id]: false }));
+    }, 2000);
   };
 
   return (
@@ -98,9 +109,25 @@ export function FeaturedProducts() {
                     </div>
                     
                     <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <button className="w-full bg-vinho-700 text-white py-2.5 rounded text-sm font-medium hover:bg-vinho-800 transition-colors flex items-center justify-center gap-2">
-                        <ShoppingCart className="w-4 h-4" />
-                        Adicionar
+                      <button 
+                        onClick={() => handleAddToCart(product)}
+                        className={`w-full py-2.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                          addedItems[product.id] 
+                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                            : 'bg-vinho-700 text-white hover:bg-vinho-800'
+                        }`}
+                      >
+                        {addedItems[product.id] ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Adicionado
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-4 h-4" />
+                            Adicionar
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

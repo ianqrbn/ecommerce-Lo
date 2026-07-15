@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, ShoppingCart, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 
 export function Header() {
   const { user, profile, signOut } = useAuth();
+  const { cartCount, setIsCartOpen } = useCart();
   const navigate = useNavigate();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -118,7 +119,10 @@ export function Header() {
                 </button>
               )}
 
-              <button className="relative text-white hover:text-vinho-100 transition">
+              <button 
+                onClick={() => setIsCartOpen(true)}
+                className="relative text-white hover:text-vinho-100 transition focus:outline-none cursor-pointer"
+              >
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-vinho-400 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
