@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, User, ShoppingCart, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export function Header() {
   const { user, profile, signOut } = useAuth();
@@ -12,19 +12,32 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Efeito para monitorar a rolagem da página
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      setIsScrolled((prev) => {
+        // Histerese: evita o "flicker" de estado quando a mudança de altura
+        // do header altera a altura total do documento e afeta o scrollY atual
+        if (window.scrollY > 100 && !prev) return true;
+        if (window.scrollY <= 20 && prev) return false;
+        return prev;
+      });
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/busca?q=${encodeURIComponent(searchTerm.trim())}`);
+      setSearchTerm(''); // Opcional: limpa a busca ou mantém
+      setMobileMenuOpen(false); // Fecha menu no mobile se aplicável
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-vinho-400 font-serif w-full transition-all duration-300">
@@ -33,7 +46,7 @@ export function Header() {
       <div className={`bg-vinho-800 px-4 transition-all duration-300 ${isScrolled ? 'py-2 shadow-md' : 'py-4'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4">
-            
+
             {/* Esquerda: Menu Sanduíche + Logo */}
             <div className="flex items-center gap-4">
               {/* O Menu Sanduíche aparece sempre no mobile. No desktop, ele só aparece se houver scroll */}
@@ -45,34 +58,40 @@ export function Header() {
               </button>
 
               {/* Logo - Fica menor durante o scroll */}
-              <h1 className={`tracking-widest text-white transition-all duration-300 ${isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'}`}>
-                ERRo
-              </h1>
+              <button className='cursor-pointer' onClick={() => navigate('/')}>
+                <h1 className={`tracking-widest text-white transition-all duration-300 ${isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'}`}>
+                  ERRo
+                </h1>
+              </button>
             </div>
 
             {/* Centro: Search Bar - Desktop */}
             {/* A barra de pesquisa agora fica fixa e visível o tempo todo (lg:flex) */}
             <div className="hidden lg:flex flex-1 max-w-md transition-all duration-300">
-              <div className="relative w-full">
+              <form onSubmit={handleSearch} className="relative w-full">
                 <input
                   type="text"
                   placeholder="Pesquise por nome ou código"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="font-serif bg-white w-full px-4 py-2 pr-10 border border-vinho-300 rounded-md focus:outline-none focus:ring-2 focus:ring-vinho-400 text-sm"
                 />
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-vinho-400" />
-              </div>
+                <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none">
+                  <Search className="w-5 h-5 text-vinho-400 hover:text-vinho-600 transition-colors cursor-pointer" />
+                </button>
+              </form>
             </div>
 
             {/* Direita: Icons */}
             <div className="flex items-center gap-3 lg:gap-4">
               {user ? (
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                    className="flex items-center gap-2 text-white hover:text-vinho-100 transition focus:outline-none"
+                    className="flex items-center gap-2 text-white transition focus:outline-none cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-full bg-vinho-400 flex items-center justify-center font-sans font-semibold text-xs border border-vinho-300">
-                      {profile?.nome ? profile.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : <User className="w-4 h-4" />}
+                      {profile?.nome ? profile.nome.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : <User className="w-4 h-4" />}
                     </div>
                     <span className="hidden md:inline text-sm font-medium">
                       {profile?.nome ? profile.nome.split(' ')[0] : 'Minha Conta'}
@@ -84,19 +103,14 @@ export function Header() {
                       <div className="px-4 py-2 border-b border-gray-100 text-xs text-gray-500 font-medium">
                         Olá, {profile?.nome ? profile.nome.split(' ')[0] : 'Cliente'}
                       </div>
-                      <button 
+                      <button
                         onClick={() => { setProfileMenuOpen(false); navigate('/perfil'); }}
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
                       >
                         Meu Perfil
                       </button>
-                      <button 
-                        onClick={() => { setProfileMenuOpen(false); navigate('/pedidos'); }}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition cursor-pointer"
-                      >
-                        Meus Pedidos
-                      </button>
-                      <button 
+
+                      <button
                         onClick={async () => {
                           setProfileMenuOpen(false);
                           await signOut();
@@ -110,18 +124,18 @@ export function Header() {
                   )}
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => navigate('/login')}
-                  className="text-white hover:text-vinho-100 transition flex items-center gap-1 focus:outline-none cursor-pointer"
+                  className="text-white transition flex items-center gap-1 focus:outline-none cursor-pointer"
                 >
                   <User className="w-5 h-5" />
                   <span className="hidden md:inline text-sm font-medium">Entrar</span>
                 </button>
               )}
 
-              <button 
+              <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative text-white hover:text-vinho-100 transition focus:outline-none cursor-pointer"
+                className="relative text-white transition focus:outline-none cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
@@ -136,14 +150,18 @@ export function Header() {
           {/* Search Bar - Mobile */}
           {/* Removida a lógica de esconder, a barra continuará visível abaixo da logo ao rolar */}
           <div className="lg:hidden mt-3 transition-all duration-300">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
                 placeholder="Pesquisar"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="font-serif bg-white w-full px-4 py-2 pr-10 border border-vinho-300 rounded-md focus:outline-none focus:ring-2 focus:ring-vinho-400 text-sm"
               />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-vinho-400" />
-            </div>
+              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 focus:outline-none">
+                <Search className="w-5 h-5 text-vinho-400 hover:text-vinho-600 transition-colors" />
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -153,13 +171,13 @@ export function Header() {
       <nav className={`bg-vinho-800 border-t border-vinho-400 transition-all duration-300 origin-top ${mobileMenuOpen ? 'block' : isScrolled ? 'hidden' : 'hidden lg:block'}`}>
         <div className="max-w-7xl mx-auto px-4 py-3">
           <ul className="text-white flex flex-col lg:flex-row lg:items-center lg:justify-center gap-3 lg:gap-8 text-sm">
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">ANÉIS</a></li>
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">COLARES</a></li>
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">BRINCOS</a></li>
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">PULSEIRAS</a></li>
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">COLEÇÕES</a></li>
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">PRESENTES</a></li>
-            <li><a href="#" className="transition block py-2 lg:py-0 hover:text-vinho-100">PROMOÇÕES</a></li>
+            <li><Link to="/categoria/aneis" className="transition block py-2 lg:py-0">ANÉIS</Link></li>
+            <li><Link to="/categoria/colares" className="transition block py-2 lg:py-0">COLARES</Link></li>
+            <li><Link to="/categoria/brincos" className="transition block py-2 lg:py-0">BRINCOS</Link></li>
+            <li><Link to="/categoria/pulseiras" className="transition block py-2 lg:py-0">PULSEIRAS</Link></li>
+            <li><Link to="/categoria/colecoes" className="transition block py-2 lg:py-0">COLEÇÕES</Link></li>
+            <li><Link to="/categoria/presentes" className="transition block py-2 lg:py-0">PRESENTES</Link></li>
+            <li><Link to="/promocoes" className="transition block py-2 lg:py-0">PROMOÇÕES</Link></li>
           </ul>
         </div>
       </nav>

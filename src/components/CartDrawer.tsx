@@ -118,8 +118,7 @@ export function CartDrawer() {
               className="w-full bg-vinho-700 text-white py-3 px-4 rounded-md font-medium hover:bg-vinho-800 transition-colors flex justify-center items-center gap-2"
               onClick={() => {
                 setIsCartOpen(false);
-                // Aqui seria o navigate('/checkout') no futuro
-                alert('Checkout ainda não implementado!');
+                navigate('/checkout');
               }}
             >
               Finalizar Compra

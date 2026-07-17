@@ -16,7 +16,11 @@ export default function Perfil() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
 
-  // Carrega os dados iniciais do perfil
+  const [activeTab, setActiveTab] = useState<'dados' | 'pedidos'>('dados');
+  const [pedidos, setPedidos] = useState<any[]>([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(false);
+
+  // Carrega os dados iniciais do perfil e os pedidos
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -28,6 +32,31 @@ export default function Perfil() {
       setCpf(profile.cpf || '');
       setTelefone(profile.telefone || '');
     }
+
+    // Busca pedidos
+    const fetchPedidos = async () => {
+      setLoadingPedidos(true);
+      try {
+        const { data, error } = await supabase
+          .from('pedidos')
+          .select(`
+            *,
+            enderecos!inner ( usuario_id )
+          `)
+          .eq('enderecos.usuario_id', user.id)
+          .order('data_pedido', { ascending: false });
+        
+        if (!error && data) {
+          setPedidos(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar pedidos:", err);
+      } finally {
+        setLoadingPedidos(false);
+      }
+    };
+    
+    fetchPedidos();
   }, [user, profile, navigate]);
 
   // Função simples para aplicar máscara no CPF (apenas formatação visual básica)
@@ -111,19 +140,45 @@ export default function Perfil() {
     );
   }
 
+  // Helper para formatar status do pedido
+  const formatStatus = (status: string) => {
+    switch(status) {
+      case 'pendente': return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">Pendente</span>;
+      case 'pago': return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Pago</span>;
+      case 'cancelado': return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Cancelado</span>;
+      default: return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">{status}</span>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       
-      <main className="flex-1 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
+      <main className="flex-1 py-12 px-4 pt-32">
+        <div className="max-w-4xl mx-auto">
           
           <div className="mb-8">
-            <h1 className="text-3xl font-serif text-gray-900 mb-2">Meu Perfil</h1>
-            <p className="text-gray-500">Gerencie suas informações pessoais e de contato.</p>
+            <h1 className="text-3xl font-serif text-gray-900 mb-2">Minha Conta</h1>
+            <p className="text-gray-500">Gerencie suas informações e acompanhe seus pedidos.</p>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 md:p-8">
+          <div className="flex border-b border-gray-200 mb-8">
+            <button
+              onClick={() => setActiveTab('dados')}
+              className={`pb-4 px-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'dados' ? 'border-vinho-700 text-vinho-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              Dados Pessoais
+            </button>
+            <button
+              onClick={() => setActiveTab('pedidos')}
+              className={`pb-4 px-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'pedidos' ? 'border-vinho-700 text-vinho-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              Meus Pedidos
+            </button>
+          </div>
+
+          {activeTab === 'dados' ? (
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 md:p-8">
             
             {status.type && (
               <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${status.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
@@ -220,7 +275,40 @@ export default function Perfil() {
               </div>
 
             </form>
+
           </div>
+          ) : (
+            <div className="space-y-4">
+              {loadingPedidos ? (
+                <div className="text-center py-8 text-gray-500">Carregando pedidos...</div>
+              ) : pedidos.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                  <p className="text-gray-500 mb-4">Você ainda não tem nenhum pedido.</p>
+                  <button onClick={() => navigate('/')} className="text-vinho-700 font-medium hover:underline">
+                    Começar a comprar
+                  </button>
+                </div>
+              ) : (
+                pedidos.map((pedido) => (
+                  <div key={pedido.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+                    <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Pedido #{pedido.id.toString().padStart(4, '0')}</p>
+                        <p className="text-gray-900 font-medium">
+                          {new Date(pedido.data_pedido).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {formatStatus(pedido.status)}
+                        <p className="font-bold text-gray-900">R$ {pedido.total.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                    </div>
+                    {/* Aqui futuramente podemos listar os itens do pedido se criarmos a tabela pedido_itens */}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </main>
 
