@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
-import { Heart, ShoppingCart, Check, ChevronRight, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
-
+import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { ProductCard } from '../components/ProductCard';
 export default function Category() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -17,7 +17,6 @@ export default function Category() {
   const [products, setProducts] = useState<any[]>([]);
   const [categoryName, setCategoryName] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [addedItems, setAddedItems] = useState<{ [key: string]: boolean }>({});
 
   // Estados de Filtro e Ordenação
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
@@ -162,14 +161,6 @@ export default function Category() {
     setFilteredProducts(result);
   }, [products, priceMin, priceMax, sortBy]);
 
-  const handleAddToCart = (product: any) => {
-    addToCart(product);
-    setAddedItems((prev) => ({ ...prev, [product.id]: true }));
-    setTimeout(() => {
-      setAddedItems((prev) => ({ ...prev, [product.id]: false }));
-    }, 2000);
-  };
-
   return (
 
 
@@ -284,53 +275,7 @@ export default function Category() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
                   {filteredProducts.map((product) => (
-                    <div key={product.id} className="group relative flex flex-col">
-                      <div className="relative aspect-[4/5] bg-gray-50 mb-4 overflow-hidden rounded-md">
-                        <img
-                          src={product.imagem_principal || 'https://via.placeholder.com/500'}
-                          alt={product.nome}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
-                        />
-
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="bg-white rounded-full p-2 shadow-sm hover:text-vinho-700 transition-colors">
-                            <Heart className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                          <button
-                            onClick={() => handleAddToCart(product)}
-                            className={`w-full py-2.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 ${addedItems[product.id]
-                              ? 'bg-green-600 text-white hover:bg-green-700'
-                              : 'bg-vinho-700 text-white hover:bg-vinho-800'
-                              }`}
-                          >
-                            {addedItems[product.id] ? (
-                              <>
-                                <Check className="w-4 h-4" />
-                                Adicionado
-                              </>
-                            ) : (
-                              <>
-                                <ShoppingCart className="w-4 h-4" />
-                                Adicionar
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="text-center mt-auto">
-                        <p className="text-xs text-vinho-700 font-medium mb-1 uppercase tracking-widest">
-                          {product.categoria_nome || (slug ? categoryName : 'Produto')}
-                        </p>
-                        <h3 className="text-sm text-gray-900 mb-1">{product.nome}</h3>
-                        <p className="text-sm font-medium text-gray-600">
-                          R$ {Number(product.preco).toFixed(2).replace('.', ',')}
-                        </p>
-                      </div>
-                    </div>
+                    <ProductCard key={product.id} product={product} categoryName={slug ? categoryName : undefined} />
                   ))}
                 </div>
               )}

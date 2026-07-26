@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, ShoppingCart, Menu, X } from 'lucide-react';
+import { Search, User, ShoppingCart, Menu, X, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -131,6 +131,16 @@ export function Header() {
                   <User className="w-5 h-5" />
                   <span className="hidden md:inline text-sm font-medium">Entrar</span>
                 </button>
+              )}
+
+              {user && (
+                <Link
+                  to="/favoritos"
+                  className="relative text-white transition hover:text-vinho-400 focus:outline-none cursor-pointer"
+                  title="Meus Favoritos"
+                >
+                  <Heart className="w-5 h-5" />
+                </Link>
               )}
 
               <button

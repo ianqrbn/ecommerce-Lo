@@ -5,6 +5,7 @@ import Checkout from './pages/Checkout'
 
 import Perfil from './pages/Perfil'
 import Category from './pages/Category'
+import Favoritos from './pages/Favoritos'
 import { CartDrawer } from './components/CartDrawer'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/categoria/:slug" element={<Category />} />
         <Route path="/busca" element={<Category />} />
+        <Route path="/favoritos" element={<Favoritos />} />
         
         {/* Exemplo de rota 404*/}
         <Route path="*" element={<h1>Página não encontrada</h1>} />

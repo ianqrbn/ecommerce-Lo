@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Heart, ShoppingCart, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
+import { ProductCard } from './ProductCard';
 
 export function FeaturedProducts() {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [addedItems, setAddedItems] = useState<{ [key: string]: boolean }>({});
 
   // Referência para controlar o scroll do carrossel
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -57,14 +57,6 @@ export function FeaturedProducts() {
     }
   };
 
-  const handleAddToCart = (product: any) => {
-    addToCart(product);
-    setAddedItems((prev) => ({ ...prev, [product.id]: true }));
-    setTimeout(() => {
-      setAddedItems((prev) => ({ ...prev, [product.id]: false }));
-    }, 2000);
-  };
-
   return (
     <section className="py-16 px-4 bg-white relative">
       <div className="max-w-7xl mx-auto">
@@ -101,54 +93,7 @@ export function FeaturedProducts() {
                   // Configuração de largura para os itens do carrossel (responsivo)
                   className="group relative flex-none w-64 sm:w-72 snap-start"
                 >
-                  {/* Imagem */}
-                  <div className="relative aspect-[4/5] bg-gray-50 mb-4 overflow-hidden rounded-md">
-                    <img
-                      src={product.imagem_principal || 'https://via.placeholder.com/500'}
-                      alt={product.nome}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
-                    />
-
-                    {/* Ações Hover */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="bg-white rounded-full p-2 shadow-sm hover:text-vinho-700 transition-colors">
-                        <Heart className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      <button
-                        onClick={() => handleAddToCart(product)}
-                        className={`w-full py-2.5 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 ${addedItems[product.id]
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-vinho-700 text-white hover:bg-vinho-800'
-                          }`}
-                      >
-                        {addedItems[product.id] ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            Adicionado
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart className="w-4 h-4" />
-                            Adicionar
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Textos */}
-                  <div className="text-center mt-4">
-                    <p className="text-xs text-vinho-700 font-medium mb-1 uppercase tracking-widest">
-                      {product.categoria_nome}
-                    </p>
-                    <h3 className="text-sm text-gray-900 mb-1">{product.nome}</h3>
-                    <p className="text-sm font-medium text-gray-600">
-                      R$ {Number(product.preco).toFixed(2).replace('.', ',')}
-                    </p>
-                  </div>
+                  <ProductCard product={product} categoryName={product.categoria_nome} />
                 </div>
               ))}
             </div>
