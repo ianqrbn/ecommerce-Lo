@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
-import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { SlidersHorizontal, ArrowUpDown, ChevronRight } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 export default function Category() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q');
-
+  const navigate = useNavigate();
   const { addToCart } = useCart();
 
   // Dados do DB
@@ -70,7 +70,7 @@ export default function Category() {
       } else {
         // MODO BUSCA GLOBAL OU CATÁLOGO GERAL
         setCategoryName(query ? `Resultados para "${query}"` : 'Todos os Produtos');
-        
+
         let supabaseQuery = supabase
           .from('produtos')
           .select(`
@@ -80,7 +80,7 @@ export default function Category() {
             imagem_principal,
             cat_prod (
               categorias (
-                nome
+                nome  
               )
             )
           `)
@@ -167,6 +167,15 @@ export default function Category() {
     <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <Header />
+
+      {/* Breadcrumbs */}
+      <div className="bg-gray-50 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
+          <button onClick={() => navigate('/')} className="hover:text-vinho-700 transition-colors">Início</button>
+          <ChevronRight className="w-4 h-4" />
+          <span className="font-medium text-gray-900">{categoryName || (loading ? 'Carregando...' : '')}</span>
+        </div>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 pt-8 ">
         {/* Navegação Breadcrumb e Título */}
