@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
-import { User, Mail, Phone, Hash, Save, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Package } from 'lucide-react';
+import { User, Mail, Phone, Hash, Save, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Package, Star, X, MessageSquare } from 'lucide-react';
 
 export default function Perfil() {
   const { user, profile, refreshProfile } = useAuth();
@@ -20,6 +20,13 @@ export default function Perfil() {
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
+
+  // Estados do Modal de Avaliação
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewProduto, setReviewProduto] = useState<{id: string, nome: string} | null>(null);
+  const [reviewNota, setReviewNota] = useState(0);
+  const [reviewComentario, setReviewComentario] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   // Carrega os dados iniciais do perfil e os pedidos
   useEffect(() => {
@@ -47,6 +54,7 @@ export default function Perfil() {
               quantidade,
               preco_unitario,
               produtos (
+                id,
                 nome,
                 imagem_principal
               )
@@ -135,6 +143,43 @@ export default function Perfil() {
       setStatus({ type: 'error', message: err.message || 'Erro ao atualizar o perfil. Tente novamente.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openReviewModal = (produtoId: string, produtoNome: string) => {
+    setReviewProduto({ id: produtoId, nome: produtoNome });
+    setReviewNota(0);
+    setReviewComentario('');
+    setReviewModalOpen(true);
+  };
+
+  const handleSubmitReview = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!user || !reviewProduto || reviewNota === 0) {
+      alert("Por favor, selecione uma nota.");
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const { error } = await supabase
+        .from('avaliacoes')
+        .insert([{
+          produto_id: reviewProduto.id,
+          usuario_id: user.id,
+          nota: reviewNota,
+          comentario: reviewComentario
+        }]);
+
+      if (error) throw error;
+
+      alert("Avaliação enviada com sucesso! Obrigado pelo feedback.");
+      setReviewModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao enviar avaliação:", error);
+      alert("Erro ao enviar avaliação. Tente novamente.");
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -358,8 +403,20 @@ export default function Perfil() {
                                   <p className="text-sm font-medium text-gray-900 line-clamp-1">{item.produtos?.nome || 'Produto Indisponível'}</p>
                                   <p className="text-xs text-gray-500 mt-1">Quantidade: {item.quantidade}</p>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right flex flex-col items-end gap-2">
                                   <p className="text-sm font-medium text-gray-900">R$ {Number(item.preco_unitario).toFixed(2).replace('.', ',')}</p>
+                                  {(pedido.status === 'pago' || pedido.status === 'approved') && item.produtos?.id && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openReviewModal(item.produtos.id, item.produtos.nome);
+                                      }}
+                                      className="text-xs flex items-center gap-1 text-vinho-700 font-medium hover:bg-vinho-50 px-2 py-1 rounded transition-colors border border-vinho-200"
+                                    >
+                                      <Star className="w-3 h-3" />
+                                      Avaliar
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -387,6 +444,75 @@ export default function Perfil() {
       </main>
 
       <Fuuter />
+
+      {/* Modal de Avaliação */}
+      {reviewModalOpen && reviewProduto && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-vinho-700" />
+                Avaliar Produto
+              </h3>
+              <button 
+                onClick={() => setReviewModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmitReview} className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Como foi sua experiência com <span className="font-semibold text-gray-900">{reviewProduto.nome}</span>?
+              </p>
+              
+              <div className="flex justify-center gap-2 mb-6">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewNota(star)}
+                    className="focus:outline-none transition-transform hover:scale-110"
+                  >
+                    <Star 
+                      className={`w-8 h-8 ${star <= reviewNota ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+                    />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Seu Comentário (opcional)</label>
+                <textarea
+                  className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-vinho-700 focus:border-vinho-700 outline-none resize-none"
+                  rows={4}
+                  placeholder="Conte o que achou da joia..."
+                  value={reviewComentario}
+                  onChange={(e) => setReviewComentario(e.target.value)}
+                ></textarea>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReviewModalOpen(false)}
+                  className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview || reviewNota === 0}
+                  className="flex-1 py-2 px-4 bg-vinho-700 text-white rounded-lg text-sm font-medium hover:bg-vinho-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingReview ? 'Enviando...' : 'Enviar Avaliação'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

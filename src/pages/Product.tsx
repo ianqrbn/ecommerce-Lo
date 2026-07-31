@@ -5,7 +5,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
-import { Heart, ShoppingCart, Check, ChevronRight } from 'lucide-react';
+import { Heart, ShoppingCart, Check, ChevronRight, Star } from 'lucide-react';
 
 export default function Product() {
   const { id } = useParams();
@@ -15,11 +15,12 @@ export default function Product() {
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Imagens
   const [activeImage, setActiveImage] = useState<string>('');
   const [images, setImages] = useState<string[]>([]);
-  
+  const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
+
   // Ações
   const [isFavorito, setIsFavorito] = useState(false);
   const [loadingFav, setLoadingFav] = useState(false);
@@ -39,7 +40,8 @@ export default function Product() {
           cat_prod (
             categorias (nome)
           ),
-          imagens_produto (url, ordem)
+          imagens_produto (url, ordem),
+          avaliacoes (nota, comentario, data_avaliacao, usuarios (nome, email))
         `)
         .eq('id', id)
         .single();
@@ -52,16 +54,16 @@ export default function Product() {
 
       if (data) {
         const catNome = data.cat_prod?.[0]?.categorias?.nome || 'Sem Categoria';
-        
+
         // Organiza as imagens
         const extraImages = data.imagens_produto
           ? data.imagens_produto.sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0)).map((f: any) => f.url)
           : [];
-          
+
         // A lista de imagens terá a principal primeiro, seguida pelas extras (evitando duplicatas se for a mesma url)
         let allImages = [];
         if (data.imagem_principal) {
-           allImages.push(data.imagem_principal);
+          allImages.push(data.imagem_principal);
         }
         allImages = [...allImages, ...extraImages.filter((img: string) => img !== data.imagem_principal)];
 
@@ -69,7 +71,7 @@ export default function Product() {
           ...data,
           categoria_nome: catNome,
         });
-        
+
         setImages(allImages);
         if (allImages.length > 0) {
           setActiveImage(allImages[0]);
@@ -87,6 +89,23 @@ export default function Product() {
           if (favData) {
             setIsFavorito(true);
           }
+        }
+
+        // 3. Busca as avaliações do produto
+        const { data: avaliacoesData } = await supabase
+          .from('avaliacoes')
+          .select(`
+            id,
+            nota,
+            comentario,
+            data_avaliacao,
+            usuarios (nome)
+          `)
+          .eq('produto_id', id)
+          .order('data_avaliacao', { ascending: false });
+
+        if (avaliacoesData) {
+          setAvaliacoes(avaliacoesData);
         }
       }
       setLoading(false);
@@ -171,7 +190,7 @@ export default function Product() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
-      
+
       {/* Breadcrumbs */}
       <div className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
@@ -185,18 +204,18 @@ export default function Product() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full">
         <div className="flex flex-col md:flex-row gap-12 lg:gap-16">
-          
+
           {/* Esquerda: Galeria de Imagens (Abaixo) */}
           <div className="w-full md:w-1/2 flex flex-col">
             {/* Imagem Principal */}
             <div className="w-full aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden border border-gray-100 mb-4">
-              <img 
-                src={activeImage || 'https://via.placeholder.com/600'} 
-                alt={product.nome} 
+              <img
+                src={activeImage || 'https://via.placeholder.com/600'}
+                alt={product.nome}
                 className="w-full h-full object-cover"
               />
             </div>
-            
+
             {/* Miniaturas (Abaixo) */}
             {images.length > 1 && (
               <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
@@ -204,9 +223,8 @@ export default function Product() {
                   <button
                     key={index}
                     onClick={() => setActiveImage(img)}
-                    className={`relative w-20 h-24 flex-shrink-0 rounded-md overflow-hidden border-2 transition-all cursor-pointer ${
-                      activeImage === img ? 'border-vinho-700' : 'border-transparent hover:border-vinho-300'
-                    }`}
+                    className={`relative w-20 h-24 flex-shrink-0 rounded-md overflow-hidden border-2 transition-all cursor-pointer ${activeImage === img ? 'border-vinho-700' : 'border-transparent hover:border-vinho-300'
+                      }`}
                   >
                     <img src={img} alt={`Miniatura ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
@@ -223,7 +241,7 @@ export default function Product() {
             <h1 className="text-3xl lg:text-4xl font-serif text-gray-900 mb-4">
               {product.nome}
             </h1>
-            
+
             <div className="text-2xl text-gray-900 font-medium mb-8">
               R$ {Number(product.preco).toFixed(2).replace('.', ',')}
             </div>
@@ -235,12 +253,12 @@ export default function Product() {
                 <p>Nenhuma descrição disponível para este produto.</p>
               )}
             </div>
-            
+
             {product.peso_prata && (
-               <div className="mb-6 text-sm text-gray-500 flex gap-2 border-b border-gray-100 pb-4">
-                  <span className="font-semibold text-gray-700">Peso:</span>
-                  <span>{product.peso_prata}g</span>
-               </div>
+              <div className="mb-6 text-sm text-gray-500 flex gap-2 border-b border-gray-100 pb-4">
+                <span className="font-semibold text-gray-700">Peso:</span>
+                <span>{product.peso_prata}g</span>
+              </div>
             )}
 
             {/* Ações */}
@@ -248,13 +266,12 @@ export default function Product() {
               <button
                 onClick={handleAddToCart}
                 disabled={product.estoque <= 0}
-                className={`flex-1 py-4 px-6 rounded text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  product.estoque <= 0 
+                className={`flex-1 py-4 px-6 rounded text-sm font-medium transition-all flex items-center justify-center gap-2 ${product.estoque <= 0
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : added 
-                      ? 'bg-green-600 text-white hover:bg-green-700 shadow-md' 
+                    : added
+                      ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
                       : 'bg-vinho-700 text-white hover:bg-vinho-800 shadow-md hover:shadow-lg'
-                }`}
+                  }`}
               >
                 {product.estoque <= 0 ? (
                   'Esgotado'
@@ -277,29 +294,68 @@ export default function Product() {
                 className="w-14 h-14 flex-shrink-0 flex items-center justify-center bg-gray-50 border border-gray-200 rounded text-gray-500 hover:text-vinho-700 hover:border-vinho-300 hover:bg-vinho-50 transition-colors focus:outline-none cursor-pointer"
                 title={isFavorito ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
               >
-                <Heart 
-                  className="w-6 h-6" 
-                  fill={isFavorito ? '#b91c1c' : 'transparent'} 
-                  color={isFavorito ? '#b91c1c' : 'currentColor'} 
+                <Heart
+                  className="w-6 h-6"
+                  fill={isFavorito ? '#b91c1c' : 'transparent'}
+                  color={isFavorito ? '#b91c1c' : 'currentColor'}
                 />
               </button>
             </div>
-            
+
             <div className="mt-6 flex flex-col gap-2 text-xs text-gray-400">
-               <p>Em estoque: {product.estoque} unidades</p>
-               {product.estoque <= 5 && product.estoque > 0 && (
-                 <p className="text-orange-500 font-medium">Corra, restam poucas unidades!</p>
-               )}
+              <p>Em estoque: {product.estoque} unidades</p>
+              {product.estoque <= 5 && product.estoque > 0 && (
+                <p className="text-orange-500 font-medium">Corra, restam poucas unidades!</p>
+              )}
             </div>
 
           </div>
         </div>
+
+        {/* Seção de Avaliações */}
+        <div className="mt-16 pt-10 border-t border-gray-100">
+          <h2 className="text-2xl font-serif text-gray-900 mb-6">Avaliações do Produto</h2>
+          
+          {avaliacoes.length === 0 ? (
+            <p className="text-gray-500">Este produto ainda não possui avaliações.</p>
+          ) : (
+            <div className="space-y-6">
+              {avaliacoes.map((av) => (
+                <div key={av.id} className="bg-gray-50 p-6 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-vinho-100 rounded-full flex items-center justify-center text-vinho-700 font-bold">
+                        {av.usuarios?.nome ? av.usuarios.nome.charAt(0).toUpperCase() : 'U'}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{av.usuarios?.nome || 'Usuário Anônimo'}</p>
+                        <p className="text-sm text-gray-500">
+                          {av.data_avaliacao ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR') : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex text-yellow-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`w-4 h-4 ${i < (av.nota || 0) ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-700">{av.comentario}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       <Fuuter />
-      
+
       {/* Hide scrollbar for thumbnails */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}} />
     </div>
