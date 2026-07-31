@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export function Fuuter() {
   return (
@@ -9,9 +10,9 @@ export function Fuuter() {
         <div>
           <h3 className="text-sm font-serif text-gray-900 tracking-wider mb-4">SOBRE NÓS</h3>
           <ul className="space-y-3 text-sm text-gray-600">
-            <li><a href="#" className=" transition-colors">Redes Sociais</a></li>
-            <li><a href="#" className=" transition-colors">Sobre a Loja</a></li>
-            <li><a href="#" className=" transition-colors">Seja Nosso Parceiro</a></li>
+            <li><a href="https://instagram.com" target="_blank" rel="noreferrer" className=" transition-colors hover:text-vinho-700">Redes Sociais</a></li>
+            <li><Link to="/sobre" className=" transition-colors hover:text-vinho-700">Sobre a Loja</Link></li>
+            <li><Link to="/termos" className=" transition-colors hover:text-vinho-700">Termos e Privacidade</Link></li>
           </ul>
         </div>
 
@@ -19,9 +20,9 @@ export function Fuuter() {
         <div>
           <h3 className="text-sm font-serif text-gray-900 tracking-wider mb-4">ACESSOS RÁPIDOS</h3>
           <ul className="space-y-3 text-sm text-gray-600">
-            <li><a href="#" className=" transition-colors">Todos os Produtos</a></li>
-            <li><a href="#" className=" transition-colors">Lançamentos</a></li>
-            <li><a href="#" className=" transition-colors">Promoção</a></li>
+            <li><Link to="/busca" className=" transition-colors hover:text-vinho-700">Todos os Produtos</Link></li>
+            <li><Link to="/busca" className=" transition-colors hover:text-vinho-700">Lançamentos</Link></li>
+            <li><Link to="/busca" className=" transition-colors hover:text-vinho-700">Promoção</Link></li>
           </ul>
         </div>
 
@@ -29,10 +30,10 @@ export function Fuuter() {
         <div>
           <h3 className="text-sm font-serif text-gray-900 tracking-wider mb-4">SUPORTE AO CLIENTE</h3>
           <ul className="space-y-3 text-sm text-gray-600">
-            <li><a href="#" className=" transition-colors">Central de Atendimento</a></li>
-            <li><a href="#" className=" transition-colors">Informações de Envio</a></li>
-            <li><a href="#" className=" transition-colors">Devoluções</a></li>
-            <li><a href="#" className=" transition-colors">FAQ</a></li>
+            <li><Link to="/contato" className=" transition-colors hover:text-vinho-700">Central de Atendimento</Link></li>
+            <li><Link to="/envio" className=" transition-colors hover:text-vinho-700">Informações de Envio</Link></li>
+            <li><Link to="/devolucoes" className=" transition-colors hover:text-vinho-700">Devoluções</Link></li>
+            <li><Link to="/faq" className=" transition-colors hover:text-vinho-700">FAQ</Link></li>
           </ul>
         </div>
 

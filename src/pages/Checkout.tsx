@@ -118,6 +118,20 @@ export default function Checkout() {
 
       if (pedError) throw new Error('Erro ao criar pedido: ' + pedError.message);
 
+      // 2.5 Inserir os Itens do Pedido
+      const orderItems = cart.map((item) => ({
+        pedido_id: pedData.id,
+        produto_id: item.id,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('itens_pedido')
+        .insert(orderItems);
+
+      if (itemsError) throw new Error('Erro ao salvar itens do pedido: ' + itemsError.message);
+
       // 3. Chamar a Edge Function para gerar a Preference do MP
       const itemsForMP = cart.map((item) => ({
         id: item.id.toString(),

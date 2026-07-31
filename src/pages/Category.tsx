@@ -52,6 +52,8 @@ export default function Category() {
             nome, 
             preco, 
             imagem_principal, 
+            qtd_vendidos,
+            qtd_favoritos,
             cat_prod!inner (
               categorias!inner (
                 slug
@@ -78,6 +80,8 @@ export default function Category() {
             nome, 
             preco, 
             imagem_principal,
+            qtd_vendidos,
+            qtd_favoritos,
             cat_prod (
               categorias (
                 nome  
@@ -148,13 +152,13 @@ export default function Category() {
         result.sort((a, b) => b.nome.localeCompare(a.nome));
         break;
       case 'sales_desc':
-        // Placeholder para "Mais Vendidos"
-        result.sort((a, b) => b.id - a.id);
+        // Mais Vendidos
+        result.sort((a, b) => (b.qtd_vendidos || 0) - (a.qtd_vendidos || 0));
         break;
       case 'relevance':
       default:
-        // Mantém ordem de criação ou ordem que veio do banco (por ID)
-        result.sort((a, b) => a.id - b.id);
+        // Relevância (Mais favoritados)
+        result.sort((a, b) => (b.qtd_favoritos || 0) - (a.qtd_favoritos || 0));
         break;
     }
 
