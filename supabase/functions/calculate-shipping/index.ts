@@ -25,6 +25,18 @@ Deno.serve(async (req) => {
 
     let totalWeightGrams = 0
     let totalQuantity = 0
+    let cepOrigem = '35680392' // Default fallback
+
+    // Buscar CEP de Origem nas configurações
+    const { data: configData } = await supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'cep_origem')
+      .single()
+      
+    if (configData && configData.valor) {
+      cepOrigem = configData.valor
+    }
 
     // Buscar pesos dos produtos
     for (const item of items) {
@@ -62,7 +74,7 @@ Deno.serve(async (req) => {
 
     const payload = {
       from: {
-        postal_code: "35680392"
+        postal_code: cepOrigem
       },
       to: {
         postal_code: cep_destino.replace(/\D/g, '')
