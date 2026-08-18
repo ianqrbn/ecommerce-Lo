@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Truck, Search, Loader2 } from 'lucide-react';
 
@@ -13,13 +13,30 @@ interface ShippingOption {
 
 interface ShippingCalculatorProps {
   items: Array<{ id: string; quantity: number }>;
+  initialCep?: string;
+  autoCalculate?: boolean;
+  onSelectOption?: (option: ShippingOption) => void;
+  selectedOptionId?: number;
 }
 
-export function ShippingCalculator({ items }: ShippingCalculatorProps) {
+export function ShippingCalculator({ items, initialCep, autoCalculate, onSelectOption, selectedOptionId }: ShippingCalculatorProps) {
   const [cep, setCep] = useState('');
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (initialCep !== undefined) {
+      setCep(initialCep);
+      const raw = initialCep.replace(/\D/g, '');
+      if (autoCalculate && raw.length === 8 && items.length > 0) {
+        const timer = setTimeout(() => {
+          handleCalculate(raw);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [initialCep, autoCalculate, items]);
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
@@ -30,8 +47,9 @@ export function ShippingCalculator({ items }: ShippingCalculatorProps) {
     setCep(value);
   };
 
-  const handleCalculate = async () => {
-    const rawCep = cep.replace(/\D/g, '');
+  const handleCalculate = async (cepOverride?: string) => {
+    const targetCep = typeof cepOverride === 'string' ? cepOverride : cep;
+    const rawCep = targetCep.replace(/\D/g, '');
     if (rawCep.length !== 8) {
       setError('CEP inválido. Digite 8 números.');
       return;
@@ -89,7 +107,7 @@ export function ShippingCalculator({ items }: ShippingCalculatorProps) {
           className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-vinho-500 focus:ring-1 focus:ring-vinho-500"
         />
         <button
-          onClick={handleCalculate}
+          onClick={() => handleCalculate()}
           disabled={loading || cep.length < 9}
           className="bg-gray-900 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
@@ -113,7 +131,13 @@ export function ShippingCalculator({ items }: ShippingCalculatorProps) {
         <div className="mt-6 space-y-3">
           <p className="text-sm font-medium text-gray-700 mb-2">Opções de entrega:</p>
           {options.map((option) => (
-            <div key={option.id} className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded text-sm">
+            <div 
+              key={option.id} 
+              onClick={() => onSelectOption && onSelectOption(option)}
+              className={`flex items-center justify-between bg-white p-3 border rounded text-sm ${
+                onSelectOption ? 'cursor-pointer hover:border-vinho-500 transition-colors' : 'border-gray-200'
+              } ${selectedOptionId === option.id ? 'border-vinho-700 bg-vinho-50 ring-1 ring-vinho-700' : 'border-gray-200'}`}
+            >
               <div className="flex items-center gap-3">
                 {option.picture && (
                    <img src={option.picture} alt={option.company} className="w-8 h-8 object-contain" />

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
+import { ShippingCalculator } from '../components/ShippingCalculator';
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 
 
@@ -14,6 +15,11 @@ export default function Checkout() {
 
   const [loading, setLoading] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  const [selectedShipping, setSelectedShipping] = useState<any>(null);
+
+  const shippingItems = useMemo(() => {
+    return cart.map(item => ({ id: item.id.toString(), quantity: item.quantidade }));
+  }, [cart]);
 
   // Endereco Form
   const [endereco, setEndereco] = useState({
@@ -99,7 +105,7 @@ export default function Checkout() {
       if (endError) throw new Error('Erro ao salvar endereço: ' + endError.message);
 
       // 2. Criar o Pedido
-      const frete = 15.00; // Frete fixo por enquanto
+      const frete = selectedShipping ? Number(selectedShipping.price) : 0;
       const total = cartTotal + frete;
 
       const { data: pedData, error: pedError } = await supabase
@@ -243,6 +249,17 @@ export default function Checkout() {
                 </div>
               </form>
             </div>
+            
+            <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-serif text-gray-900 mb-6">Opções de Entrega</h2>
+              <ShippingCalculator 
+                items={shippingItems} 
+                initialCep={endereco.cep} 
+                autoCalculate={true} 
+                onSelectOption={setSelectedShipping}
+                selectedOptionId={selectedShipping?.id}
+              />
+            </div>
           </div>
 
           {/* Coluna Lateral - Resumo e Pagamento */}
@@ -271,11 +288,11 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Frete</span>
-                  <span>R$ 15,00</span>
+                  <span>{selectedShipping ? `R$ ${Number(selectedShipping.price).toFixed(2).replace('.', ',')}` : 'A calcular'}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
                   <span>Total</span>
-                  <span>R$ {(cartTotal + 15).toFixed(2).replace('.', ',')}</span>
+                  <span>R$ {(cartTotal + (selectedShipping ? Number(selectedShipping.price) : 0)).toFixed(2).replace('.', ',')}</span>
                 </div>
               </div>
 
@@ -283,10 +300,10 @@ export default function Checkout() {
                 <button
                   type="submit"
                   form="checkout-form"
-                  disabled={loading || cart.length === 0}
+                  disabled={loading || cart.length === 0 || !selectedShipping}
                   className="w-full bg-vinho-700 text-white py-3 rounded-md font-medium hover:bg-vinho-800 transition-colors disabled:opacity-50 flex justify-center"
                 >
-                  {loading ? 'Processando...' : 'Ir para Pagamento'}
+                  {loading ? 'Processando...' : !selectedShipping ? 'Selecione o Frete' : 'Ir para Pagamento'}
                 </button>
               ) : (
                 <div className="mt-4 border-t border-gray-100 pt-6">
