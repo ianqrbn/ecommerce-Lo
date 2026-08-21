@@ -118,6 +118,7 @@ export default function Checkout() {
           total: total,
           forma_pagamento: 'mercado_pago',
           data_pedido: new Date().toISOString(),
+          melhor_envio_service_id: selectedShipping ? selectedShipping.id : 1, // Fallback para PAC(1)
         })
         .select()
         .single();
@@ -145,6 +146,16 @@ export default function Checkout() {
         quantity: item.quantidade,
         unit_price: item.preco
       }));
+
+      // Adiciona o valor do frete como um item na cobrança do Mercado Pago
+      if (frete > 0) {
+        itemsForMP.push({
+          id: 'frete',
+          title: `Frete - ${selectedShipping?.name || 'Entrega'}`,
+          quantity: 1,
+          unit_price: frete
+        });
+      }
 
       // No Vite, chamamos a function através da URL do Supabase ou localhost no dev
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;

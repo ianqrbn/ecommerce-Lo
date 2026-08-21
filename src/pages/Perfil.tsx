@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
-import { User, Mail, Phone, Hash, Save, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Package, Star, X, MessageSquare } from 'lucide-react';
+import { User, Mail, Phone, Hash, Save, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Package, Star, X, MessageSquare, Truck } from 'lucide-react';
 
 export default function Perfil() {
   const { user, profile, refreshProfile } = useAuth();
@@ -370,6 +370,27 @@ export default function Perfil() {
                         <p className="font-bold text-gray-900">R$ {pedido.total.toFixed(2).replace('.', ',')}</p>
                       </div>
                       
+                      {pedido.rastreio_codigo && (
+                        <div className="w-full flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg p-3 mt-4 md:mt-0 md:w-auto flex-1 md:ml-4">
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-5 h-5 text-vinho-700" />
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Código de Rastreio</p>
+                              <p className="text-sm font-semibold text-gray-900">{pedido.rastreio_codigo}</p>
+                            </div>
+                          </div>
+                          <a 
+                            href={`https://melhorrastreio.com.br/rastreio/${pedido.rastreio_codigo}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium text-white bg-vinho-700 px-3 py-1.5 rounded hover:bg-vinho-800 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Acompanhar
+                          </a>
+                        </div>
+                      )}
+
                       <div className="w-full flex justify-center mt-2 md:mt-0 md:w-auto md:ml-4">
                         <button className="text-gray-400 hover:text-vinho-700 transition-colors flex items-center gap-1 text-sm font-medium">
                           {expandedOrder === pedido.id ? (

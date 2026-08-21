@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       .select('valor')
       .eq('chave', 'cep_origem')
       .single()
-      
+
     if (configData && configData.valor) {
       cepOrigem = configData.valor
     }
@@ -45,12 +45,12 @@ Deno.serve(async (req) => {
         .select('peso_prata')
         .eq('id', item.id)
         .single()
-      
+
       if (error) {
         console.error(`Erro ao buscar produto ${item.id}:`, error)
         continue
       }
-      
+
       totalQuantity += item.quantity || 1;
       if (data && data.peso_prata) {
         totalWeightGrams += (Number(data.peso_prata) * (item.quantity || 1))
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const baseWidth = 11
     let height = Math.ceil(totalQuantity / 5) * 4
     // Altura máxima da caixa dos correios costuma ser uns 30cm, vamos limitar se necessário, mas 4cm por 5 itens é seguro
-    
+
     // Calcula peso em KG. 
     // É necessário adicionar peso da caixa sim, porque transportadoras cobram pelo peso real e têm peso mínimo (ex: 0.3kg = 300g). 
     // Se a joia pesa 5g, e passarmos 0.005kg, a API do Melhor Envio pode recusar. 
@@ -95,14 +95,14 @@ Deno.serve(async (req) => {
     // Vamos usar a URL de sandbox temporariamente, pois muitos tokens recém-gerados são de sandbox.
     // Se o seu token for de produção, troque para: https://melhorenvio.com.br/api/v2/me/shipment/calculate
     const apiUrl = 'https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate'
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-        'User-Agent': 'Ecommerce Lo (contato@ecommerce-lo.com)' // Recomendado pela API
+        'User-Agent': 'Ecommerce Lo (erro.silver@gmail.com)' // Recomendado pela API
       },
       body: JSON.stringify(payload)
     })

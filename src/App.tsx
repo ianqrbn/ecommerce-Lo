@@ -20,6 +20,7 @@ import Dashboard from './pages/admin/Dashboard'
 import Configuracoes from './pages/admin/Configuracoes'
 import ProdutosAdmin from './pages/admin/ProdutosAdmin'
 import CategoriasAdmin from './pages/admin/CategoriasAdmin'
+import PedidosAdmin from './pages/admin/PedidosAdmin'
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="produtos" element={<ProdutosAdmin />} />
             <Route path="categorias" element={<CategoriasAdmin />} />
+            <Route path="pedidos" element={<PedidosAdmin />} />
             <Route path="configuracoes" element={<Configuracoes />} />
           </Route>
         </Route>
