@@ -185,9 +185,8 @@ export function Header() {
             <li><Link to="/categoria/colares" className="transition block py-2 lg:py-0">COLARES</Link></li>
             <li><Link to="/categoria/brincos" className="transition block py-2 lg:py-0">BRINCOS</Link></li>
             <li><Link to="/categoria/pulseiras" className="transition block py-2 lg:py-0">PULSEIRAS</Link></li>
-            <li><Link to="/categoria/colecoes" className="transition block py-2 lg:py-0">COLEÇÕES</Link></li>
+            <li><Link to="/categoria/conjuntos" className="transition block py-2 lg:py-0">CONJUNTOS</Link></li>
             <li><Link to="/categoria/presentes" className="transition block py-2 lg:py-0">PRESENTES</Link></li>
-            <li><Link to="/promocoes" className="transition block py-2 lg:py-0">PROMOÇÕES</Link></li>
           </ul>
         </div>
       </nav>

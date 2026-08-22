@@ -5,6 +5,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
+import { ShippingCalculator } from '../components/ShippingCalculator';
 import { Heart, ShoppingCart, Check, ChevronRight, Star } from 'lucide-react';
 
 export default function Product() {
@@ -307,6 +308,10 @@ export default function Product() {
               {product.estoque <= 5 && product.estoque > 0 && (
                 <p className="text-orange-500 font-medium">Corra, restam poucas unidades!</p>
               )}
+            </div>
+
+            <div className="mt-8">
+              <ShippingCalculator items={[{ id: product.id, quantity: 1 }]} />
             </div>
 
           </div>

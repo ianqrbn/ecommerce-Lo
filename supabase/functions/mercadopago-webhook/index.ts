@@ -53,12 +53,22 @@ Deno.serve(async (req) => {
         .update({ status_pagamento: status })
         .eq('pedido_id', externalReference);
 
-      // Se foi aprovado, atualiza o pedido
+      // Se foi aprovado, atualiza o pedido e gera a etiqueta
       if (status === 'approved') {
         await supabase
           .from('pedidos')
           .update({ status: 'pago' })
           .eq('id', externalReference);
+
+        // Chama a Edge Function para gerar a etiqueta assincronamente (sem aguardar)
+        fetch(`${supabaseUrl}/functions/v1/generate-shipping-label`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}` // Service Role
+          },
+          body: JSON.stringify({ pedido_id: externalReference })
+        }).catch(err => console.error('Falha ao disparar geração de etiqueta:', err));
       }
     }
 

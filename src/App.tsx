@@ -14,6 +14,13 @@ import FAQ from './pages/FAQ'
 import Envio from './pages/Envio'
 import Termos from './pages/Termos'
 import { CartDrawer } from './components/CartDrawer'
+import { AdminRoute } from './components/AdminRoute'
+import AdminLayout from './pages/admin/AdminLayout'
+import Dashboard from './pages/admin/Dashboard'
+import Configuracoes from './pages/admin/Configuracoes'
+import ProdutosAdmin from './pages/admin/ProdutosAdmin'
+import CategoriasAdmin from './pages/admin/CategoriasAdmin'
+import PedidosAdmin from './pages/admin/PedidosAdmin'
 
 function App() {
   return (
@@ -40,6 +47,17 @@ function App() {
         
         {/* Exemplo de rota 404*/}
         <Route path="*" element={<h1>Página não encontrada</h1>} />
+
+        {/* Rotas Administrativas */}
+        <Route path="/admin" element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="produtos" element={<ProdutosAdmin />} />
+            <Route path="categorias" element={<CategoriasAdmin />} />
+            <Route path="pedidos" element={<PedidosAdmin />} />
+            <Route path="configuracoes" element={<Configuracoes />} />
+          </Route>
+        </Route>
       </Routes>
     </>
   )

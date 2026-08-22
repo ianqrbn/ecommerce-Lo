@@ -9,6 +9,7 @@ export interface UsuarioPerfil {
   cpf?: string;
   telefone?: string;
   data_criacao: string;
+  is_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -51,14 +52,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('Erro ao criar perfil:', insertError);
             setProfile(null);
           } else {
-            setProfile(newData);
+            setProfile({ ...newData, is_admin: false });
           }
         } else {
           console.error('Erro ao buscar perfil:', error);
           setProfile(null);
         }
       } else {
-        setProfile(data);
+        // Verifica se o usuário é administrador
+        const { data: adminData, error: adminError } = await supabase
+          .from('admin_users')
+          .select('user_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (adminError) {
+          console.error('Erro ao verificar admin_users:', adminError);
+        }
+
+        console.log('[AuthContext] Verificando admin para o user_id:', userId);
+        console.log('[AuthContext] Resultado da tabela admin_users:', adminData);
+
+        setProfile({ ...data, is_admin: !!adminData });
       }
     } catch (err) {
       console.error('Erro ao buscar perfil:', err);
@@ -75,13 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Busca do perfil sempre que o 'user' mudar
   useEffect(() => {
     if (user) {
+      setLoading(true); // Garante que a tela de loading volte a aparecer enquanto busca o perfil
       console.log('[AuthContext] Usuário alterado, buscando perfil...');
       fetchProfile(user.id, user).finally(() => {
         setLoading(false);
       });
     } else {
       setProfile(null);
-      setLoading(false);
+      // Não mudamos o loading aqui porque o getSession e onAuthStateChange já cuidam disso
     }
   }, [user]);
 

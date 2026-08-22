@@ -31,6 +31,7 @@ export function FeaturedProducts() {
           )
         `)
         .eq('ativo', true)
+        .order('qtd_favoritos', { ascending: false, nullsFirst: false })
         .limit(8);
 
       if (error) {
