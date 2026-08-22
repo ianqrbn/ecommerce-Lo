@@ -60,7 +60,7 @@ export function Header() {
               {/* Logo - Fica menor durante o scroll */}
               <button className='cursor-pointer' onClick={() => navigate('/')}>
                 <h1 className={`tracking-widest text-white transition-all duration-300 ${isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'}`}>
-                  ERRo
+                  ERRO
                 </h1>
               </button>
             </div>
