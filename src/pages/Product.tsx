@@ -239,11 +239,11 @@ export default function Product() {
             <span className="text-sm font-semibold text-vinho-700 tracking-widest uppercase mb-2">
               {product.categoria_nome}
             </span>
-            <h1 className="text-3xl lg:text-4xl font-serif text-gray-900 mb-4">
+            <h1 className="text-3xl lg:text-4xl font-semibold text-gray-900 mb-4">
               {product.nome}
             </h1>
 
-            <div className="text-2xl text-gray-900 font-medium mb-8">
+            <div className="text-2xl text-gray-900 text-sm mb-8">
               R$ {Number(product.preco).toFixed(2).replace('.', ',')}
             </div>
 
@@ -268,10 +268,10 @@ export default function Product() {
                 onClick={handleAddToCart}
                 disabled={product.estoque <= 0}
                 className={`flex-1 py-4 px-6 rounded text-sm font-medium transition-all flex items-center justify-center gap-2 ${product.estoque <= 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : added
-                      ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
-                      : 'bg-vinho-700 text-white hover:bg-vinho-800 shadow-md hover:shadow-lg'
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : added
+                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+                    : 'bg-vinho-700 text-white hover:bg-vinho-800 shadow-md hover:shadow-lg'
                   }`}
               >
                 {product.estoque <= 0 ? (
@@ -320,7 +320,7 @@ export default function Product() {
         {/* Seção de Avaliações */}
         <div className="mt-16 pt-10 border-t border-gray-100">
           <h2 className="text-2xl font-serif text-gray-900 mb-6">Avaliações do Produto</h2>
-          
+
           {avaliacoes.length === 0 ? (
             <p className="text-gray-500">Este produto ainda não possui avaliações.</p>
           ) : (
@@ -341,9 +341,9 @@ export default function Product() {
                     </div>
                     <div className="flex text-yellow-400">
                       {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-4 h-4 ${i < (av.nota || 0) ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${i < (av.nota || 0) ? 'fill-current text-yellow-400' : 'text-gray-300'}`}
                         />
                       ))}
                     </div>
