@@ -8,10 +8,21 @@ export interface CartItem {
   quantidade: number;
 }
 
+export interface Coupon {
+  id: string;
+  codigo: string;
+  tipo: 'porcentagem' | 'fixo';
+  valor: number;
+}
+
 interface CartContextType {
   cart: CartItem[];
   cartCount: number;
   cartTotal: number;
+  cartDiscount: number;
+  cartTotalWithDiscount: number;
+  appliedCoupon: Coupon | null;
+  setAppliedCoupon: (coupon: Coupon | null) => void;
   addToCart: (product: any, quantity?: number) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
@@ -24,17 +35,26 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from local storage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('ecommerce-cart');
+    const savedCoupon = localStorage.getItem('ecommerce-coupon');
     if (savedCart) {
       try {
         setCart(JSON.parse(savedCart));
       } catch (e) {
         console.error('Failed to parse cart from local storage', e);
+      }
+    }
+    if (savedCoupon) {
+      try {
+        setAppliedCoupon(JSON.parse(savedCoupon));
+      } catch (e) {
+        console.error('Failed to parse coupon from local storage', e);
       }
     }
     setIsLoaded(true);
@@ -44,8 +64,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('ecommerce-cart', JSON.stringify(cart));
+      if (appliedCoupon) {
+        localStorage.setItem('ecommerce-coupon', JSON.stringify(appliedCoupon));
+      } else {
+        localStorage.removeItem('ecommerce-coupon');
+      }
     }
-  }, [cart, isLoaded]);
+  }, [cart, appliedCoupon, isLoaded]);
 
   const addToCart = (product: any, quantity: number = 1) => {
     setCart((prevCart) => {
@@ -95,10 +120,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setCart([]);
+    setAppliedCoupon(null);
   };
 
   const cartCount = cart.reduce((total, item) => total + item.quantidade, 0);
   const cartTotal = cart.reduce((total, item) => total + item.preco * item.quantidade, 0);
+  
+  const cartDiscount = appliedCoupon
+    ? (appliedCoupon.tipo === 'porcentagem' ? cartTotal * (appliedCoupon.valor / 100) : appliedCoupon.valor)
+    : 0;
+    
+  const cartTotalWithDiscount = Math.max(0, cartTotal - cartDiscount);
 
   return (
     <CartContext.Provider
@@ -106,6 +138,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cart,
         cartCount,
         cartTotal,
+        cartDiscount,
+        cartTotalWithDiscount,
+        appliedCoupon,
+        setAppliedCoupon,
         addToCart,
         removeFromCart,
         updateQuantity,
