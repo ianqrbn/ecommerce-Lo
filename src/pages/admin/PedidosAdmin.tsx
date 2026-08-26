@@ -195,7 +195,16 @@ export default function PedidosAdmin() {
                   <tr key={pedido.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">#{pedido.id}</td>
                     <td className="px-6 py-4 text-gray-500">
-                      {new Date(pedido.data_pedido).toLocaleDateString('pt-BR')}
+                      {(() => {
+                        const d = pedido.data_pedido;
+                        if (!d) return '';
+                        // Evita o bug de fuso horário onde "YYYY-MM-DD" vira meia noite UTC e cai pro dia anterior no Brasil
+                        if (d.length === 10) {
+                          const [ano, mes, dia] = d.split('-');
+                          return `${dia}/${mes}/${ano}`;
+                        }
+                        return new Date(d).toLocaleDateString('pt-BR');
+                      })()}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{pedido.enderecos?.usuarios?.nome || 'Usuário Deletado'}</div>
