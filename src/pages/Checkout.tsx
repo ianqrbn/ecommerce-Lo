@@ -276,6 +276,20 @@ export default function Checkout() {
     }
   };
 
+  // Previne que o botão do Mercado Pago seja renderizado duas vezes
+  // quando o componente sofre re-render (ex: quando o loading muda pra false)
+  const renderWallet = useMemo(() => {
+    if (!preferenceId) return null;
+    return (
+      <div className="mt-4 border-t border-gray-100 pt-6">
+        <p className="text-sm text-center text-gray-600 mb-4">
+          Escolha como deseja pagar de forma 100% segura pelo Mercado Pago:
+        </p>
+        <Wallet initialization={{ preferenceId: preferenceId }} />
+      </div>
+    );
+  }, [preferenceId]);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <Header />
@@ -432,12 +446,7 @@ export default function Checkout() {
                   {loading ? 'Processando...' : !selectedShipping ? 'Selecione o Frete' : 'Ir para Pagamento'}
                 </button>
               ) : (
-                <div className="mt-4 border-t border-gray-100 pt-6">
-                  <p className="text-sm text-center text-gray-600 mb-4">Escolha como deseja pagar de forma 100% segura pelo Mercado Pago:</p>
-                  <Wallet
-                    initialization={{ preferenceId: preferenceId }}
-                  />
-                </div>
+                renderWallet
               )}
             </div>
           </div>

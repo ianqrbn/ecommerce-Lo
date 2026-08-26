@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Perfil não encontrado na tabela public.usuarios, criando...');
           const email = currentUser.email || '';
           const nome = currentUser.user_metadata?.nome || currentUser.user_metadata?.full_name || email.split('@')[0];
-          
+
           const { data: newData, error: insertError } = await supabase
             .from('usuarios')
             .insert([{ id: userId, email, nome }])
@@ -50,7 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (insertError) {
             console.error('Erro ao criar perfil:', insertError);
-            setProfile(null);
+            // Se a RLS falhar ao inserir, criamos um perfil em memória para não travar o usuário
+            setProfile({
+              id: userId,
+              email,
+              nome,
+              data_criacao: new Date().toISOString(),
+              is_admin: false
+            });
           } else {
             setProfile({ ...newData, is_admin: false });
           }
@@ -109,10 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log('[AuthContext] getSession() retornou!', { session, error });
       if (!isMounted) return;
-      
+
       const currentUser = session?.user ?? null;
       if (!currentUser) {
-         setLoading(false); // Se não tiver usuário, já pode tirar o loading
+        setLoading(false); // Se não tiver usuário, já pode tirar o loading
       }
       setUser(currentUser);
     });
@@ -124,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const currentUser = session?.user ?? null;
       if (!currentUser) {
-         setLoading(false);
+        setLoading(false);
       }
       setUser(currentUser);
     });
