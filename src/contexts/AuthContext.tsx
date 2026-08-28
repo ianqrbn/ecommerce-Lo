@@ -121,7 +121,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!currentUser) {
         setLoading(false); // Se não tiver usuário, já pode tirar o loading
       }
-      setUser(currentUser);
+      setUser((prevUser) => {
+        if (prevUser?.id === currentUser?.id) return prevUser;
+        return currentUser;
+      });
     });
 
     console.log('[AuthContext] Configurando onAuthStateChange...');
@@ -133,7 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!currentUser) {
         setLoading(false);
       }
-      setUser(currentUser);
+      setUser((prevUser) => {
+        if (prevUser?.id === currentUser?.id) return prevUser;
+        return currentUser;
+      });
     });
 
     return () => {

@@ -26,6 +26,8 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
   const [imagensSecundarias, setImagensSecundarias] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [selectedCategorias, setSelectedCategorias] = useState<any[]>([]);
+  const [detalhes, setDetalhes] = useState<{chave: string, valor: string}[]>([]);
+  const [variacoes, setVariacoes] = useState<{nome: string, estoque: string}[]>([]);
 
   useEffect(() => {
     fetchAllCategorias();
@@ -47,8 +49,18 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
           peso_prata: produto.peso_prata?.toString() || '',
           imagem_principal: produto.imagem_principal || '',
         });
+        
+        // Carrega os detalhes (JSONB)
+        if (produto.detalhes && typeof produto.detalhes === 'object') {
+          const detArray = Object.entries(produto.detalhes).map(([key, value]) => ({ chave: key, valor: value as string }));
+          setDetalhes(detArray);
+        } else {
+          setDetalhes([]);
+        }
+
         fetchImagensSecundarias(produto.id);
         fetchSelectedCategorias(produto.id);
+        fetchVariacoes(produto.id);
       } else {
         setFormData({
           nome: '',
@@ -60,6 +72,8 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
         });
         setImagensSecundarias([]);
         setSelectedCategorias([]);
+        setDetalhes([]);
+        setVariacoes([]);
       }
       setErrorMsg('');
     }
@@ -71,6 +85,13 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
       setSelectedCategorias(data.map(d => d.cat_id));
     } else {
       setSelectedCategorias([]);
+    }
+  };
+
+  const fetchVariacoes = async (produtoId: string) => {
+    const { data, error } = await supabase.from('produto_variacoes').select('nome, estoque').eq('produto_id', produtoId);
+    if (!error && data) {
+      setVariacoes(data.map(v => ({ nome: v.nome, estoque: v.estoque.toString() })));
     }
   };
 
@@ -154,12 +175,44 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
     }
   };
 
+  const addDetalhe = () => setDetalhes([...detalhes, { chave: '', valor: '' }]);
+  const removeDetalhe = (index: number) => {
+    const novo = [...detalhes];
+    novo.splice(index, 1);
+    setDetalhes(novo);
+  };
+  const handleDetalheChange = (index: number, field: 'chave' | 'valor', val: string) => {
+    const novo = [...detalhes];
+    novo[index][field] = val;
+    setDetalhes(novo);
+  };
+
+  const addVariacao = () => setVariacoes([...variacoes, { nome: '', estoque: '' }]);
+  const removeVariacao = (index: number) => {
+    const novo = [...variacoes];
+    novo.splice(index, 1);
+    setVariacoes(novo);
+  };
+  const handleVariacaoChange = (index: number, field: 'nome' | 'estoque', val: string) => {
+    const novo = [...variacoes];
+    novo[index][field] = val;
+    setVariacoes(novo);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
     try {
+      // Converte o array de detalhes para objeto JSON
+      const detalhesObj: Record<string, string> = {};
+      detalhes.forEach(d => {
+        if (d.chave.trim()) {
+          detalhesObj[d.chave.trim()] = d.valor.trim();
+        }
+      });
+
       const payload = {
         nome: formData.nome,
         descricao: formData.descricao,
@@ -167,6 +220,7 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
         estoque: parseInt(formData.estoque) || 0,
         peso_prata: parseFloat(formData.peso_prata) || null,
         imagem_principal: formData.imagem_principal,
+        detalhes: detalhesObj,
         ativo: true,
       };
 
@@ -208,6 +262,19 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
           }));
           const { error: catError } = await supabase.from('cat_prod').insert(catInsertData);
           if (catError) throw catError;
+        }
+
+        // Sincronizar variações de tamanho e estoque
+        await supabase.from('produto_variacoes').delete().eq('produto_id', produtoId);
+        const validVariacoes = variacoes.filter(v => v.nome.trim() !== '');
+        if (validVariacoes.length > 0) {
+          const varInsertData = validVariacoes.map(v => ({
+            produto_id: produtoId,
+            nome: v.nome.trim(),
+            estoque: parseInt(v.estoque) || 0
+          }));
+          const { error: varError } = await supabase.from('produto_variacoes').insert(varInsertData);
+          if (varError) throw varError;
         }
       }
 
@@ -311,6 +378,71 @@ export function ProdutoFormModal({ isOpen, onClose, onSave, produto }: ProdutoFo
                   <img src={formData.imagem_principal} alt="Preview" className="w-full h-full object-cover" />
                 </div>
               )}
+            </div>
+
+            <div className="border-t border-gray-100 pt-6 mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Detalhes Técnicos (Opcional)</h3>
+                <button type="button" onClick={addDetalhe} className="text-sm flex items-center gap-1 text-vinho-600 hover:text-vinho-800">
+                  <Plus className="w-4 h-4" /> Adicionar Característica
+                </button>
+              </div>
+              <div className="space-y-3">
+                {detalhes.map((det, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      placeholder="Ex: Material"
+                      value={det.chave}
+                      onChange={(e) => handleDetalheChange(idx, 'chave', e.target.value)}
+                      className="flex-1 border border-gray-300 rounded p-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Ex: Ouro 18k"
+                      value={det.valor}
+                      onChange={(e) => handleDetalheChange(idx, 'valor', e.target.value)}
+                      className="flex-1 border border-gray-300 rounded p-2 text-sm"
+                    />
+                    <button type="button" onClick={() => removeDetalhe(idx)} className="text-red-500 hover:text-red-700 p-2">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-6 mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Tamanhos e Variações (Opcional)</h3>
+                <button type="button" onClick={addVariacao} className="text-sm flex items-center gap-1 text-vinho-600 hover:text-vinho-800">
+                  <Plus className="w-4 h-4" /> Adicionar Tamanho
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">Se este produto possuir tamanhos, defina-os abaixo com o estoque individual.</p>
+              <div className="space-y-3">
+                {variacoes.map((v, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      placeholder="Ex: Tamanho 14"
+                      value={v.nome}
+                      onChange={(e) => handleVariacaoChange(idx, 'nome', e.target.value)}
+                      className="flex-[2] border border-gray-300 rounded p-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Estoque"
+                      value={v.estoque}
+                      onChange={(e) => handleVariacaoChange(idx, 'estoque', e.target.value)}
+                      className="flex-1 border border-gray-300 rounded p-2 text-sm"
+                    />
+                    <button type="button" onClick={() => removeVariacao(idx)} className="text-red-500 hover:text-red-700 p-2">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="border-t border-gray-100 pt-6 mt-6">

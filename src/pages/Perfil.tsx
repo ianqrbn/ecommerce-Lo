@@ -53,6 +53,7 @@ export default function Perfil() {
             itens_pedido (
               quantidade,
               preco_unitario,
+              tamanho,
               produtos (
                 id,
                 nome,
@@ -422,7 +423,12 @@ export default function Perfil() {
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-gray-900 line-clamp-1">{item.produtos?.nome || 'Produto Indisponível'}</p>
-                                  <p className="text-xs text-gray-500 mt-1">Quantidade: {item.quantidade}</p>
+                                  <div className="flex gap-4">
+                                    <p className="text-xs text-gray-500 mt-1">Qtd: {item.quantidade}</p>
+                                    {item.tamanho && (
+                                      <p className="text-xs text-gray-500 mt-1">Tam: {item.tamanho}</p>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="text-right flex flex-col items-end gap-2">
                                   <p className="text-sm font-medium text-gray-900">R$ {Number(item.preco_unitario).toFixed(2).replace('.', ',')}</p>

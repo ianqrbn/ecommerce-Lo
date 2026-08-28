@@ -193,7 +193,8 @@ export default function Checkout() {
         pedido_id: pedData.id,
         produto_id: item.id,
         quantidade: item.quantidade,
-        preco_unitario: item.preco
+        preco_unitario: item.preco,
+        tamanho: item.tamanho || null
       }));
 
       const { error: itemsError } = await supabase
@@ -362,10 +363,13 @@ export default function Checkout() {
 
               <div className="space-y-4 mb-6">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
+                  <div key={item.cartItemId || item.id} className="flex justify-between items-center text-sm">
                     <div className="flex items-center gap-3 flex-1">
                       <span className="font-medium text-gray-600">{item.quantidade}x</span>
-                      <span className="text-gray-900 line-clamp-1">{item.nome}</span>
+                      <div className="flex flex-col">
+                        <span className="text-gray-900 line-clamp-1">{item.nome}</span>
+                        {item.tamanho && <span className="text-xs text-gray-500">Tamanho: {item.tamanho}</span>}
+                      </div>
                     </div>
                     <span className="text-gray-900 font-medium">
                       R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')}

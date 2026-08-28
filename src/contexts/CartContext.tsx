@@ -6,6 +6,8 @@ export interface CartItem {
   preco: number;
   imagem_principal: string;
   quantidade: number;
+  tamanho?: string;
+  cartItemId: string;
 }
 
 export interface Coupon {
@@ -23,9 +25,9 @@ interface CartContextType {
   cartTotalWithDiscount: number;
   appliedCoupon: Coupon | null;
   setAppliedCoupon: (coupon: Coupon | null) => void;
-  addToCart: (product: any, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: any, quantity?: number, tamanho?: string) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
@@ -72,12 +74,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cart, appliedCoupon, isLoaded]);
 
-  const addToCart = (product: any, quantity: number = 1) => {
+  const addToCart = (product: any, quantity: number = 1, tamanho?: string) => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
+      const cartItemId = tamanho ? `${product.id}-${tamanho}` : product.id.toString();
+      const existingItem = prevCart.find((item) => item.cartItemId === cartItemId || (!item.cartItemId && item.id === product.id));
+      
       if (existingItem) {
         return prevCart.map((item) =>
-          item.id === product.id
+          (item.cartItemId === cartItemId || (!item.cartItemId && item.id === product.id))
             ? { ...item, quantidade: item.quantidade + quantity }
             : item
         );
@@ -88,11 +92,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [
         ...prevCart,
         {
+          cartItemId,
           id: product.id,
           nome: product.nome,
           preco: precoNumerico,
           imagem_principal: product.imagem_principal,
           quantidade: quantity,
+          tamanho,
         },
       ];
     });
@@ -101,19 +107,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsCartOpen(true);
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+  const removeFromCart = (cartItemId: string) => {
+    setCart((prevCart) => prevCart.filter((item) => item.cartItemId !== cartItemId && item.id !== cartItemId));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(cartItemId);
       return;
     }
     
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === productId ? { ...item, quantidade: quantity } : item
+        (item.cartItemId === cartItemId || item.id === cartItemId) ? { ...item, quantidade: quantity } : item
       )
     );
   };
