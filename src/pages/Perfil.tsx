@@ -28,6 +28,12 @@ export default function Perfil() {
   const [reviewComentario, setReviewComentario] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Estados do Modal de Devolução
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnPedidoId, setReturnPedidoId] = useState<number | null>(null);
+  const [returnMotivo, setReturnMotivo] = useState('');
+  const [submittingReturn, setSubmittingReturn] = useState(false);
+
   // Carrega os dados iniciais do perfil e os pedidos
   useEffect(() => {
     if (!user) {
@@ -59,6 +65,12 @@ export default function Perfil() {
                 nome,
                 imagem_principal
               )
+            ),
+            devolucoes (
+              id,
+              status,
+              etiqueta_url,
+              rastreio
             )
           `)
           .eq('enderecos.usuario_id', user.id)
@@ -144,6 +156,62 @@ export default function Perfil() {
       setStatus({ type: 'error', message: err.message || 'Erro ao atualizar o perfil. Tente novamente.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openReturnModal = (pedidoId: number) => {
+    setReturnPedidoId(pedidoId);
+    setReturnMotivo('');
+    setReturnModalOpen(true);
+  };
+
+  const handleSubmitReturn = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!user || !returnPedidoId || !returnMotivo.trim()) {
+      alert("Por favor, preencha o motivo da devolução.");
+      return;
+    }
+
+    setSubmittingReturn(true);
+    try {
+      const { error } = await supabase
+        .from('devolucoes')
+        .insert([{
+          pedido_id: returnPedidoId,
+          usuario_id: user.id,
+          motivo: returnMotivo,
+          status: 'pendente'
+        }]);
+
+      if (error) throw error;
+      
+      setReturnModalOpen(false);
+      
+      // Recarrega os pedidos para exibir o novo status
+      const { data, error: fetchError } = await supabase
+        .from('pedidos')
+        .select(`
+          *,
+          enderecos!inner ( usuario_id ),
+          itens_pedido (
+            quantidade,
+            preco_unitario,
+            tamanho,
+            produtos (id, nome, imagem_principal)
+          ),
+          devolucoes (id, status, etiqueta_url, rastreio)
+        `)
+        .eq('enderecos.usuario_id', user.id)
+        .order('data_pedido', { ascending: false });
+        
+      if (!fetchError && data) setPedidos(data);
+
+      alert('Solicitação de devolução enviada com sucesso! Aguarde a análise da loja.');
+    } catch (err: any) {
+      console.error('Erro ao solicitar devolução:', err);
+      alert('Erro ao solicitar devolução: ' + err.message);
+    } finally {
+      setSubmittingReturn(false);
     }
   };
 
@@ -456,6 +524,39 @@ export default function Perfil() {
                               <span className="text-gray-600">Frete</span>
                               <span className="text-gray-900 font-medium">R$ {Number(pedido.frete).toFixed(2).replace('.', ',')}</span>
                             </div>
+
+                            {/* Seção de Devolução */}
+                            <div className="pt-4 mt-4 border-t border-gray-200 px-2">
+                              {pedido.devolucoes && pedido.devolucoes.length > 0 ? (
+                                <div className="bg-orange-50 border border-orange-100 p-4 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                                  <div>
+                                    <p className="text-sm font-semibold text-orange-800">Solicitação de Devolução</p>
+                                    <p className="text-xs text-orange-600">Status: {pedido.devolucoes[0].status.replace('_', ' ').toUpperCase()}</p>
+                                  </div>
+                                  {pedido.devolucoes[0].etiqueta_url && (
+                                    <a 
+                                      href={pedido.devolucoes[0].etiqueta_url} 
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                      className="text-xs font-medium bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors"
+                                    >
+                                      Imprimir Etiqueta
+                                    </a>
+                                  )}
+                                </div>
+                              ) : (
+                                (pedido.status === 'pago' || pedido.status === 'approved' || pedido.status === 'enviado') && (
+                                  <div className="flex justify-end">
+                                    <button 
+                                      onClick={() => openReturnModal(pedido.id)}
+                                      className="text-xs text-gray-500 underline hover:text-gray-700"
+                                    >
+                                      Solicitar Devolução deste pedido
+                                    </button>
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <p className="text-sm text-gray-500 italic">Nenhum item encontrado para este pedido.</p>
@@ -534,6 +635,61 @@ export default function Perfil() {
                   className="flex-1 py-2 px-4 bg-vinho-700 text-white rounded-lg text-sm font-medium hover:bg-vinho-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submittingReview ? 'Enviando...' : 'Enviar Avaliação'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Devolução */}
+      {returnModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Package className="w-5 h-5 text-vinho-700" />
+                Solicitar Devolução
+              </h3>
+              <button 
+                onClick={() => setReturnModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmitReturn} className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Pelo Código de Defesa do Consumidor, você tem 7 dias após o recebimento para solicitar a devolução. Nossa equipe analisará o pedido e gerará sua etiqueta de logística reversa.
+              </p>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Motivo da Devolução *</label>
+                <textarea
+                  required
+                  className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-vinho-700 focus:border-vinho-700 outline-none resize-none"
+                  rows={4}
+                  placeholder="Por favor, explique por que deseja devolver o produto..."
+                  value={returnMotivo}
+                  onChange={(e) => setReturnMotivo(e.target.value)}
+                ></textarea>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReturnModalOpen(false)}
+                  className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReturn || !returnMotivo.trim()}
+                  className="flex-1 py-2 px-4 bg-vinho-700 text-white rounded-lg text-sm font-medium hover:bg-vinho-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingReturn ? 'Enviando...' : 'Confirmar Solicitação'}
                 </button>
               </div>
             </form>

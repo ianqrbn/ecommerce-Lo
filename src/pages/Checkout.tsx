@@ -11,7 +11,7 @@ initMercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY || 'APP_USR-0c0ce8f3-c173-450
 
 export default function Checkout() {
   const { cart, cartTotal, cartDiscount, cartTotalWithDiscount, appliedCoupon, setAppliedCoupon, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
@@ -19,6 +19,14 @@ export default function Checkout() {
   
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  
+  const [useCreditoLoja, setUseCreditoLoja] = useState(false);
+  
+  // Cálculos de Totais
+  const subtotalWithFrete = cartTotalWithDiscount + (selectedShipping ? Number(selectedShipping.price) : 0);
+  const creditoDisponivel = profile?.credito_loja || 0;
+  const creditoAplicado = useCreditoLoja ? Math.min(creditoDisponivel, subtotalWithFrete) : 0;
+  const finalTotal = subtotalWithFrete - creditoAplicado;
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -244,7 +252,8 @@ export default function Checkout() {
             email: user.email
           },
           external_reference: pedData.id.toString(),
-          coupon_code: appliedCoupon?.codigo // Passando o código para a Edge Function revalidar
+          coupon_code: appliedCoupon?.codigo, // Passando o código para a Edge Function revalidar
+          credito_aplicado: creditoAplicado // Novo: repassa crédito usado
         })
       });
 
@@ -252,6 +261,14 @@ export default function Checkout() {
 
       if (!mpResponse.ok) {
         throw new Error('Erro ao gerar preferência de pagamento: ' + (mpData.error || 'Erro desconhecido'));
+      }
+
+      if (mpData.paid_with_credit) {
+        // Pedido totalmente pago com crédito
+        alert('Pedido finalizado com sucesso usando Crédito em Loja!');
+        clearCart();
+        window.location.href = '/perfil';
+        return;
       }
 
       setPreferenceId(mpData.preferenceId);
@@ -430,13 +447,34 @@ export default function Checkout() {
                     <span>- R$ {cartDiscount.toFixed(2).replace('.', ',')}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600">
+                
+                {creditoDisponivel > 0 && (
+                  <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="rounded text-vinho-700 focus:ring-vinho-700 cursor-pointer"
+                        checked={useCreditoLoja}
+                        onChange={(e) => setUseCreditoLoja(e.target.checked)}
+                      />
+                      <span className="text-gray-700 font-medium">Usar Crédito em Loja (Saldo: R$ {creditoDisponivel.toFixed(2).replace('.', ',')})</span>
+                    </label>
+                    {useCreditoLoja && creditoAplicado > 0 && (
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span>Crédito Aplicado</span>
+                        <span>- R$ {creditoAplicado.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-between text-gray-600 pt-2 border-t border-gray-100">
                   <span>Frete</span>
                   <span>{selectedShipping ? `R$ ${Number(selectedShipping.price).toFixed(2).replace('.', ',')}` : 'A calcular'}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
                   <span>Total</span>
-                  <span>R$ {(cartTotalWithDiscount + (selectedShipping ? Number(selectedShipping.price) : 0)).toFixed(2).replace('.', ',')}</span>
+                  <span>R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
                 </div>
               </div>
 

@@ -10,6 +10,7 @@ export interface UsuarioPerfil {
   telefone?: string;
   data_criacao: string;
   is_admin?: boolean;
+  credito_loja?: number;
 }
 
 interface AuthContextType {
