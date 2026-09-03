@@ -1,13 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useCart } from '../contexts/CartContext';
 import { ProductCard } from './ProductCard';
 
-export function FeaturedProducts() {
+interface ProductCarouselProps {
+  titulo: string;
+  tipo: 'categoria' | 'mais_vendidos' | 'mais_curtidos' | 'lancamentos';
+  categoriaSlug?: string;
+}
+
+export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarouselProps) {
   const { addToCart } = useCart();
-  const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,28 +20,43 @@ export function FeaturedProducts() {
 
   useEffect(() => {
     async function fetchProducts() {
-      // Busca otimizada em 1 requisição com Join (Muitos para Muitos)
-      const { data, error } = await supabase
+      let query = supabase
         .from('produtos')
         .select(`
           id, 
           nome, 
           preco, 
           imagem_principal, 
-          cat_prod (
-            categorias (
-              nome
+          data_criacao,
+          qtd_favoritos,
+          cat_prod!inner (
+            categorias!inner (
+              nome,
+              slug
             )
           )
         `)
-        .eq('ativo', true)
-        .order('qtd_favoritos', { ascending: false, nullsFirst: false })
-        .limit(8);
+        .eq('ativo', true);
+
+      // Filtro por categoria
+      if (tipo === 'categoria' && categoriaSlug) {
+        query = query.eq('cat_prod.categorias.slug', categoriaSlug);
+      }
+
+      // Ordenação
+      if (tipo === 'mais_curtidos' || tipo === 'mais_vendidos') {
+        query = query.order('qtd_favoritos', { ascending: false, nullsFirst: false });
+      } else if (tipo === 'lancamentos') {
+        query = query.order('data_criacao', { ascending: false, nullsFirst: false });
+      } else {
+        query = query.order('qtd_favoritos', { ascending: false, nullsFirst: false }); // default
+      }
+
+      const { data, error } = await query.limit(8);
 
       if (error) {
-        console.error('Erro ao buscar produtos em destaque:', error);
+        console.error('Erro ao buscar produtos para o carrossel:', error);
       } else if (data) {
-        // Extrai o nome da categoria da resposta aninhada do Supabase
         const mappedProducts = data.map((prod: any) => ({
           ...prod,
           categoria_nome: prod.cat_prod?.[0]?.categorias?.nome || 'Sem Categoria'
@@ -48,7 +67,7 @@ export function FeaturedProducts() {
     }
 
     fetchProducts();
-  }, []);
+  }, [tipo, categoriaSlug]);
 
   // Função para mover o carrossel
   const scroll = (direction: 'left' | 'right') => {
@@ -62,8 +81,7 @@ export function FeaturedProducts() {
     <section className="py-16 px-4 bg-white relative">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-2xl md:text-3xl font-serif text-gray-900 mb-2">Peças em Destaque</h2>
-          <p className="text-gray-500">Peças selecionadas para sua elegância</p>
+          <h2 className="text-2xl md:text-3xl font-serif text-gray-900 mb-2">{titulo}</h2>
         </div>
 
         {loading ? (
@@ -110,14 +128,7 @@ export function FeaturedProducts() {
           </div>
         )}
 
-        <div className="text-center mt-8">
-          <button 
-            onClick={() => navigate('/busca')}
-            className="border border-vinho-400 text-gray-900 px-8 py-3 hover:bg-vinho-800 hover:text-white transition-colors text-sm tracking-wide cursor-pointer"
-          >
-            VER TODOS OS PRODUTOS
-          </button>
-        </div>
+
       </div>
 
       {/* Adicione este CSS globalmente (ex: index.css) se preferir, ou deixe aqui para garantir */}

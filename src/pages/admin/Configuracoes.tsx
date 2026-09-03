@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Save, Loader2, Image as ImageIcon, LayoutList, Plus, Trash2, GripVertical } from 'lucide-react';
+
+export interface LandingCarousel {
+  id: string;
+  titulo: string;
+  tipo: 'categoria' | 'mais_vendidos' | 'mais_curtidos' | 'lancamentos';
+  categoria_slug?: string;
+}
 
 export default function Configuracoes() {
   const [cepOrigem, setCepOrigem] = useState('');
   const [heroImageUrl, setHeroImageUrl] = useState('');
   const [heroCategorySlug, setHeroCategorySlug] = useState('');
+  const [landingCarousels, setLandingCarousels] = useState<LandingCarousel[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
@@ -37,6 +45,11 @@ export default function Configuracoes() {
           if (item.chave === 'cep_origem') setCepOrigem(item.valor);
           if (item.chave === 'hero_image_url') setHeroImageUrl(item.valor);
           if (item.chave === 'hero_category_slug') setHeroCategorySlug(item.valor);
+          if (item.chave === 'landing_carousels') {
+            try {
+              setLandingCarousels(JSON.parse(item.valor));
+            } catch(e) {}
+          }
         });
       }
     } catch (err) {
@@ -61,7 +74,8 @@ export default function Configuracoes() {
         .upsert([
           { chave: 'cep_origem', valor: cleanCep },
           { chave: 'hero_image_url', valor: heroImageUrl },
-          { chave: 'hero_category_slug', valor: heroCategorySlug }
+          { chave: 'hero_category_slug', valor: heroCategorySlug },
+          { chave: 'landing_carousels', valor: JSON.stringify(landingCarousels) }
         ]);
 
       if (error) throw error;
@@ -162,6 +176,143 @@ export default function Configuracoes() {
           <p className="mt-1 text-xs text-gray-500">
             Escolha para qual categoria o botão "Explorar Coleção" deve redirecionar.
           </p>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 bg-vinho-600 text-white px-4 py-2 rounded-md hover:bg-vinho-700 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Salvar Configurações
+        </button>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+            <LayoutList className="w-5 h-5 text-gray-500" />
+            Carrosséis da Página Inicial
+          </h2>
+          <button
+            onClick={() => setLandingCarousels([...landingCarousels, { id: crypto.randomUUID(), titulo: 'Novo Carrossel', tipo: 'mais_vendidos' }])}
+            className="flex items-center gap-2 text-sm text-vinho-600 hover:text-vinho-700 bg-vinho-50 hover:bg-vinho-100 px-3 py-1.5 rounded-md transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Adicionar Carrossel
+          </button>
+        </div>
+        
+        <p className="text-sm text-gray-500 mb-6">
+          Configure as seções de produtos que aparecem na tela inicial (abaixo do Hero). 
+          Você pode escolher entre Categorias, Mais Vendidos, Lançamentos, etc.
+        </p>
+
+        <div className="space-y-4 mb-6">
+          {landingCarousels.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 bg-gray-50 rounded border border-dashed border-gray-200">
+              Nenhum carrossel configurado. A página usará o padrão (Mais Curtidos).
+            </div>
+          ) : (
+            landingCarousels.map((carousel, index) => (
+              <div key={carousel.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-md border border-gray-200">
+                <div className="flex-1 space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Título da Seção</label>
+                      <input
+                        type="text"
+                        value={carousel.titulo}
+                        onChange={(e) => {
+                          const newCarousels = [...landingCarousels];
+                          newCarousels[index].titulo = e.target.value;
+                          setLandingCarousels(newCarousels);
+                        }}
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-vinho-500"
+                        placeholder="Ex: Joias Autorais"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de Conteúdo</label>
+                      <select
+                        value={carousel.tipo}
+                        onChange={(e) => {
+                          const newCarousels = [...landingCarousels];
+                          newCarousels[index].tipo = e.target.value as any;
+                          setLandingCarousels(newCarousels);
+                        }}
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-vinho-500"
+                      >
+                        <option value="mais_vendidos">Mais Vendidos</option>
+                        <option value="mais_curtidos">Mais Curtidos (Favoritos)</option>
+                        <option value="lancamentos">Lançamentos</option>
+                        <option value="categoria">Categoria Específica</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {carousel.tipo === 'categoria' && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Selecione a Categoria</label>
+                      <select
+                        value={carousel.categoria_slug || ''}
+                        onChange={(e) => {
+                          const newCarousels = [...landingCarousels];
+                          newCarousels[index].categoria_slug = e.target.value;
+                          setLandingCarousels(newCarousels);
+                        }}
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-vinho-500"
+                      >
+                        <option value="">Selecione...</option>
+                        {categorias.map(cat => (
+                          <option key={cat.id} value={cat.slug}>{cat.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex flex-col gap-2 pt-5">
+                  <button
+                    onClick={() => {
+                      const newCarousels = landingCarousels.filter((_, i) => i !== index);
+                      setLandingCarousels(newCarousels);
+                    }}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Remover"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div className="flex gap-1">
+                     <button 
+                       disabled={index === 0}
+                       onClick={() => {
+                         const newCarousels = [...landingCarousels];
+                         [newCarousels[index - 1], newCarousels[index]] = [newCarousels[index], newCarousels[index - 1]];
+                         setLandingCarousels(newCarousels);
+                       }}
+                       className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-30"
+                       title="Subir"
+                     >
+                       ↑
+                     </button>
+                     <button 
+                       disabled={index === landingCarousels.length - 1}
+                       onClick={() => {
+                         const newCarousels = [...landingCarousels];
+                         [newCarousels[index + 1], newCarousels[index]] = [newCarousels[index], newCarousels[index + 1]];
+                         setLandingCarousels(newCarousels);
+                       }}
+                       className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-30"
+                       title="Descer"
+                     >
+                       ↓
+                     </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         <button
