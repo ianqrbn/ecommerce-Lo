@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, Loader2, Image as ImageIcon, LayoutList, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Save, Loader2, Image as ImageIcon, LayoutList, Plus, Trash2, GripVertical, Upload } from 'lucide-react';
 
 export interface LandingCarousel {
   id: string;
@@ -18,6 +18,7 @@ export default function Configuracoes() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
   useEffect(() => {
@@ -88,6 +89,36 @@ export default function Configuracoes() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+      setMessage({ text: '', type: '' });
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `hero_${Math.random()}.${fileExt}`;
+      const filePath = `hero/${fileName}`; // Salvando numa pasta hero (ou poderia ser produtos)
+
+      const { error: uploadError } = await supabase.storage
+        .from('produtos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('produtos').getPublicUrl(filePath);
+      
+      setHeroImageUrl(data.publicUrl);
+      setMessage({ text: 'Imagem carregada! Não esqueça de Salvar as Configurações.', type: 'success' });
+    } catch (error: any) {
+      console.error('Erro no upload da imagem:', error);
+      setMessage({ text: 'Erro ao fazer upload da imagem.', type: 'error' });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center">
@@ -145,17 +176,41 @@ export default function Configuracoes() {
         
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            URL da Imagem de Destaque
+            Imagem de Destaque
           </label>
-          <input
-            type="text"
-            value={heroImageUrl}
-            onChange={(e) => setHeroImageUrl(e.target.value)}
-            placeholder="https://exemplo.com/imagem.jpg"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-vinho-500 focus:border-vinho-500"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Cole a URL da imagem que aparecerá no banner principal da loja. Deixe em branco para usar a imagem padrão.
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={heroImageUrl}
+              onChange={(e) => setHeroImageUrl(e.target.value)}
+              placeholder="URL da imagem (https://...)"
+              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-vinho-500 focus:border-vinho-500"
+            />
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+              />
+              <button
+                type="button"
+                disabled={uploadingImage}
+                className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors border border-gray-300 text-sm whitespace-nowrap"
+              >
+                {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {uploadingImage ? 'Enviando...' : 'Fazer Upload'}
+              </button>
+            </div>
+          </div>
+          {heroImageUrl && (
+            <div className="mt-3 aspect-[21/9] w-full max-w-sm rounded overflow-hidden border border-gray-200">
+               <img src={heroImageUrl} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+          )}
+          <p className="mt-2 text-xs text-gray-500">
+            Cole a URL da imagem ou faça o upload do seu computador. Deixe em branco para usar a imagem padrão.
           </p>
         </div>
 
