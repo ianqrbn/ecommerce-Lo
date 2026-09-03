@@ -1,27 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, Image as ImageIcon } from 'lucide-react';
 
 export default function Configuracoes() {
   const [cepOrigem, setCepOrigem] = useState('');
+  const [heroImageUrl, setHeroImageUrl] = useState('');
+  const [heroCategorySlug, setHeroCategorySlug] = useState('');
+  const [categorias, setCategorias] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    fetchConfig();
+    fetchConfigAndCategories();
   }, []);
 
-  const fetchConfig = async () => {
+  const fetchConfigAndCategories = async () => {
     try {
+      // Busca categorias
+      const { data: catsData, error: catsError } = await supabase
+        .from('categorias')
+        .select('id, nome, slug')
+        .order('nome');
+      if (!catsError && catsData) setCategorias(catsData);
+
+      // Busca configurações
       const { data, error } = await supabase
         .from('configuracoes')
-        .select('valor')
-        .eq('chave', 'cep_origem')
-        .single();
+        .select('chave, valor')
+        .in('chave', ['cep_origem', 'hero_image_url', 'hero_category_slug']);
 
       if (error) throw error;
-      if (data) setCepOrigem(data.valor);
+      if (data) {
+        data.forEach(item => {
+          if (item.chave === 'cep_origem') setCepOrigem(item.valor);
+          if (item.chave === 'hero_image_url') setHeroImageUrl(item.valor);
+          if (item.chave === 'hero_category_slug') setHeroCategorySlug(item.valor);
+        });
+      }
     } catch (err) {
       console.error('Erro ao buscar configurações:', err);
     } finally {
@@ -35,13 +52,17 @@ export default function Configuracoes() {
     
     try {
       const cleanCep = cepOrigem.replace(/\D/g, '');
-      if (cleanCep.length !== 8) {
+      if (cepOrigem && cleanCep.length !== 8) {
         throw new Error('CEP deve conter 8 dígitos.');
       }
 
       const { error } = await supabase
         .from('configuracoes')
-        .upsert({ chave: 'cep_origem', valor: cleanCep });
+        .upsert([
+          { chave: 'cep_origem', valor: cleanCep },
+          { chave: 'hero_image_url', valor: heroImageUrl },
+          { chave: 'hero_category_slug', valor: heroCategorySlug }
+        ]);
 
       if (error) throw error;
       setMessage({ text: 'Configurações salvas com sucesso!', type: 'success' });
@@ -91,6 +112,57 @@ export default function Configuracoes() {
             {message.text}
           </div>
         )}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 bg-vinho-600 text-white px-4 py-2 rounded-md hover:bg-vinho-700 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Salvar Configurações
+        </button>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+          <ImageIcon className="w-5 h-5 text-gray-500" />
+          Hero Section (Capa da Loja)
+        </h2>
+        
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            URL da Imagem de Destaque
+          </label>
+          <input
+            type="text"
+            value={heroImageUrl}
+            onChange={(e) => setHeroImageUrl(e.target.value)}
+            placeholder="https://exemplo.com/imagem.jpg"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-vinho-500 focus:border-vinho-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Cole a URL da imagem que aparecerá no banner principal da loja. Deixe em branco para usar a imagem padrão.
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Categoria do Botão "Explorar"
+          </label>
+          <select
+            value={heroCategorySlug}
+            onChange={(e) => setHeroCategorySlug(e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-vinho-500 focus:border-vinho-500"
+          >
+            <option value="">Selecione uma categoria...</option>
+            {categorias.map(cat => (
+              <option key={cat.id} value={cat.slug}>{cat.nome}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Escolha para qual categoria o botão "Explorar Coleção" deve redirecionar.
+          </p>
+        </div>
 
         <button
           onClick={handleSave}
