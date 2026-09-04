@@ -22,10 +22,12 @@ export default function Product() {
   const [images, setImages] = useState<string[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
 
-  // Ações
   const [isFavorito, setIsFavorito] = useState(false);
   const [loadingFav, setLoadingFav] = useState(false);
   const [added, setAdded] = useState(false);
+
+  // Variações e Detalhes
+  const [selectedVariacao, setSelectedVariacao] = useState<any>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -42,7 +44,8 @@ export default function Product() {
             categorias (nome)
           ),
           imagens_produto (url, ordem),
-          avaliacoes (nota, comentario, data_avaliacao, usuarios (nome, email))
+          avaliacoes (nota, comentario, data_avaliacao, usuarios (nome, email)),
+          produto_variacoes (id, nome, estoque)
         `)
         .eq('id', id)
         .single();
@@ -155,7 +158,14 @@ export default function Product() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addToCart(product);
+
+    const temVariacoes = product.produto_variacoes && product.produto_variacoes.length > 0;
+    if (temVariacoes && !selectedVariacao) {
+      alert("Por favor, selecione um tamanho/variação antes de adicionar ao carrinho.");
+      return;
+    }
+
+    addToCart(product, 1, selectedVariacao?.nome);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -255,10 +265,32 @@ export default function Product() {
               )}
             </div>
 
-            {product.peso_prata && (
-              <div className="mb-6 text-sm text-gray-500 flex gap-2 border-b border-gray-100 pb-4">
-                <span className="font-semibold text-gray-700">Peso:</span>
-                <span>{product.peso_prata}g</span>
+
+            {/* Variações (Tamanhos) */}
+            {product.produto_variacoes && product.produto_variacoes.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Selecione o Tamanho:</h3>
+                <div className="flex flex-wrap gap-3">
+                  {product.produto_variacoes.map((variacao: any) => {
+                    const isEsgotado = variacao.estoque <= 0;
+                    const isSelected = selectedVariacao?.id === variacao.id;
+                    return (
+                      <button
+                        key={variacao.id}
+                        onClick={() => setSelectedVariacao(variacao)}
+                        disabled={isEsgotado}
+                        className={`px-4 py-2 text-sm font-medium rounded border transition-all ${isEsgotado
+                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
+                            : isSelected
+                              ? 'bg-vinho-700 text-white border-vinho-700'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-vinho-700 hover:text-vinho-700'
+                          }`}
+                      >
+                        {variacao.nome}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -266,15 +298,15 @@ export default function Product() {
             <div className="mt-auto pt-6 flex gap-4">
               <button
                 onClick={handleAddToCart}
-                disabled={product.estoque <= 0}
-                className={`flex-1 py-4 px-6 rounded text-sm font-medium transition-all flex items-center justify-center gap-2 ${product.estoque <= 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : added
-                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
-                    : 'bg-vinho-700 text-white hover:bg-vinho-800 shadow-md hover:shadow-lg'
+                disabled={(product.produto_variacoes?.length === 0 && product.estoque <= 0) || (selectedVariacao && selectedVariacao.estoque <= 0)}
+                className={`flex-1 py-4 px-6 rounded text-sm font-medium transition-all flex items-center justify-center gap-2 ${(product.produto_variacoes?.length === 0 && product.estoque <= 0) || (selectedVariacao && selectedVariacao.estoque <= 0)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : added
+                      ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+                      : 'bg-vinho-700 text-white hover:bg-vinho-800 shadow-md hover:shadow-lg'
                   }`}
               >
-                {product.estoque <= 0 ? (
+                {(product.produto_variacoes?.length === 0 && product.estoque <= 0) || (selectedVariacao && selectedVariacao.estoque <= 0) ? (
                   'Esgotado'
                 ) : added ? (
                   <>
@@ -304,9 +336,17 @@ export default function Product() {
             </div>
 
             <div className="mt-6 flex flex-col gap-2 text-xs text-gray-400">
-              <p>Em estoque: {product.estoque} unidades</p>
-              {product.estoque <= 5 && product.estoque > 0 && (
-                <p className="text-orange-500 font-medium">Corra, restam poucas unidades!</p>
+              {product.produto_variacoes?.length > 0 ? (
+                <p>
+                  Estoque: {selectedVariacao ? `${selectedVariacao.estoque} unidades no ${selectedVariacao.nome}` : 'Selecione um tamanho'}
+                </p>
+              ) : (
+                <>
+                  <p>Em estoque: {product.estoque} unidades</p>
+                  {product.estoque <= 5 && product.estoque > 0 && (
+                    <p className="text-orange-500 font-medium">Corra, restam poucas unidades!</p>
+                  )}
+                </>
               )}
             </div>
 
@@ -316,6 +356,25 @@ export default function Product() {
 
           </div>
         </div>
+
+        {/* Seção de Detalhes Dinâmicos (JSONB) */}
+        {product.detalhes && Object.keys(product.detalhes).length > 0 && (
+          <div className="mt-16 pt-10 border-t border-gray-100">
+            <h2 className="text-2xl font-serif text-gray-900 mb-6">Detalhes Técnicos</h2>
+            <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+              <table className="w-full text-left text-sm text-gray-700">
+                <tbody className="divide-y divide-gray-200">
+                  {Object.entries(product.detalhes).map(([key, value]) => (
+                    <tr key={key} className="hover:bg-gray-100/50 transition-colors">
+                      <td className="py-3 px-6 font-medium text-gray-900 w-1/3 bg-gray-100/30">{key}</td>
+                      <td className="py-3 px-6 w-2/3">{value as string}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Seção de Avaliações */}
         <div className="mt-16 pt-10 border-t border-gray-100">

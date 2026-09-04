@@ -49,7 +49,7 @@ export function CartDrawer() {
           ) : (
             <div className="space-y-6">
               {cart.map((item) => (
-                <div key={item.id} className="flex gap-4">
+                <div key={item.cartItemId || item.id} className="flex gap-4">
                   {/* Imagem do Produto */}
                   <div className="w-20 h-24 flex-shrink-0 bg-gray-50 rounded-md overflow-hidden">
                     <img
@@ -64,14 +64,18 @@ export function CartDrawer() {
                     <div className="flex justify-between items-start gap-2">
                       <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{item.nome}</h3>
                       <button
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.cartItemId || item.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors p-1"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="text-sm font-semibold text-gray-900">
+                    {item.tamanho && (
+                      <p className="text-xs text-gray-500 mt-0.5">Tamanho: {item.tamanho}</p>
+                    )}
+
+                    <div className="text-sm font-semibold text-gray-900 mt-1">
                       R$ {item.preco.toFixed(2).replace('.', ',')}
                     </div>
 
@@ -79,7 +83,7 @@ export function CartDrawer() {
                     <div className="flex items-center gap-3 mt-2">
                       <div className="flex items-center border border-gray-200 rounded-md">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantidade - 1)}
+                          onClick={() => updateQuantity(item.cartItemId || item.id, item.quantidade - 1)}
                           className="px-2 py-1 text-gray-500 hover:text-gray-900 transition-colors focus:outline-none"
                         >
                           <Minus className="w-3 h-3" />
@@ -88,7 +92,7 @@ export function CartDrawer() {
                           {item.quantidade}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantidade + 1)}
+                          onClick={() => updateQuantity(item.cartItemId || item.id, item.quantidade + 1)}
                           className="px-2 py-1 text-gray-500 hover:text-gray-900 transition-colors focus:outline-none"
                         >
                           <Plus className="w-3 h-3" />
