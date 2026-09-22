@@ -37,7 +37,7 @@ export function CategoryShowcase() {
 
   return (
     <section className="py-20 px-4 bg-white">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
 
         {/* Cabeçalho da Seção Minimalista */}
         <div className="text-center mb-16">
@@ -67,7 +67,7 @@ export function CategoryShowcase() {
             {/* Container do Carrossel */}
             <div
               ref={carouselRef}
-              className="flex gap-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
+              className="flex gap-8 justify-center overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {categories.map((category) => (

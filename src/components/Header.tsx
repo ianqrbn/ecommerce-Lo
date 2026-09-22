@@ -44,7 +44,7 @@ export function Header() {
 
       {/* Main Header - A cor e o padding mudam dependendo do scroll */}
       <div className={`bg-vinho-800 px-4 transition-all duration-300 ${isScrolled ? 'py-2 shadow-md' : 'py-4'}`}>
-        <div className="max-w-7xl mx-auto">
+        <div className="mx-auto">
           <div className="flex items-center justify-between gap-4">
 
             {/* Esquerda: Menu Sanduíche + Logo */}

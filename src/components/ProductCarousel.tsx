@@ -79,7 +79,7 @@ export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarousel
 
   return (
     <section className="py-16 px-4 bg-white relative">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-serif text-gray-900 mb-2">{titulo}</h2>
         </div>
@@ -103,7 +103,7 @@ export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarousel
             {/* Container do Carrossel */}
             <div
               ref={carouselRef}
-              className="flex gap-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
+              className="flex justify-center gap-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Esconde a barra de rolagem no Firefox e IE
             >
               {products.map((product) => (

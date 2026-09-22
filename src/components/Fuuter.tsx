@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export function Fuuter() {
   return (
     <footer className="bg-white border-t border-gray-200 pt-16 pb-8 px-16 mt-16">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left md:justify-items-center">
+      <div className="mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left md:justify-items-center">
 
         {/* Sobre Nós */}
         <div>

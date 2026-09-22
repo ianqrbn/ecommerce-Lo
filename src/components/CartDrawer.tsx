@@ -51,13 +51,13 @@ export function CartDrawer() {
               {cart.map((item) => (
                 <div key={item.cartItemId || item.id} className="flex gap-4">
                   {/* Imagem do Produto */}
-                  <div className="w-20 h-24 flex-shrink-0 bg-gray-50 rounded-md overflow-hidden">
+                  <button className='cursor-pointer' onClick={() => navigate(`/produto/${item.id}`)} >
                     <img
                       src={item.imagem_principal || 'https://via.placeholder.com/150'}
                       alt={item.nome}
-                      className="w-full h-full object-cover"
+                      className="w-20 h-24 flex-shrink-0 bg-gray-50 rounded-md overflow-hidden object-cover"
                     />
-                  </div>
+                  </button>
 
                   {/* Detalhes do Produto */}
                   <div className="flex flex-col flex-1 justify-between">

@@ -96,6 +96,15 @@ export default function PedidosAdmin() {
       return <span className="text-gray-400 text-xs">Aguardando Pagamento</span>;
     }
 
+    if (pedido.melhor_envio_service_id === 0) {
+      return (
+        <span className="inline-flex items-center gap-1 bg-vinho-50 text-vinho-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-vinho-200">
+          <Package className="w-3 h-3" />
+          Retirada na Loja
+        </span>
+      );
+    }
+
     if (pedido.etiqueta_status === 'impressa') {
       return (
         <div className="flex flex-col items-end gap-2">

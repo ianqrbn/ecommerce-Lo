@@ -15,7 +15,7 @@ export default function Configuracoes() {
   const [heroCategorySlug, setHeroCategorySlug] = useState('');
   const [landingCarousels, setLandingCarousels] = useState<LandingCarousel[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -38,7 +38,7 @@ export default function Configuracoes() {
       const { data, error } = await supabase
         .from('configuracoes')
         .select('chave, valor')
-        .in('chave', ['cep_origem', 'hero_image_url', 'hero_category_slug']);
+        .in('chave', ['cep_origem', 'hero_image_url', 'hero_category_slug', 'landing_carousels']);
 
       if (error) throw error;
       if (data) {
@@ -49,7 +49,7 @@ export default function Configuracoes() {
           if (item.chave === 'landing_carousels') {
             try {
               setLandingCarousels(JSON.parse(item.valor));
-            } catch(e) {}
+            } catch (e) { }
           }
         });
       }
@@ -63,7 +63,7 @@ export default function Configuracoes() {
   const handleSave = async () => {
     setSaving(true);
     setMessage({ text: '', type: '' });
-    
+
     try {
       const cleanCep = cepOrigem.replace(/\D/g, '');
       if (cepOrigem && cleanCep.length !== 8) {
@@ -108,7 +108,7 @@ export default function Configuracoes() {
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('produtos').getPublicUrl(filePath);
-      
+
       setHeroImageUrl(data.publicUrl);
       setMessage({ text: 'Imagem carregada! Não esqueça de Salvar as Configurações.', type: 'success' });
     } catch (error: any) {
@@ -130,10 +130,10 @@ export default function Configuracoes() {
   return (
     <div className="p-8 max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Configurações Gerais</h1>
-      
+
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Frete e Envio</h2>
-        
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             CEP de Origem (Remetente)
@@ -151,9 +151,8 @@ export default function Configuracoes() {
         </div>
 
         {message.text && (
-          <div className={`mb-4 p-3 rounded text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}>
+          <div className={`mb-4 p-3 rounded text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}>
             {message.text}
           </div>
         )}
@@ -173,7 +172,7 @@ export default function Configuracoes() {
           <ImageIcon className="w-5 h-5 text-gray-500" />
           Hero Section (Capa da Loja)
         </h2>
-        
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Imagem de Destaque
@@ -206,7 +205,7 @@ export default function Configuracoes() {
           </div>
           {heroImageUrl && (
             <div className="mt-3 aspect-[21/9] w-full max-w-sm rounded overflow-hidden border border-gray-200">
-               <img src={heroImageUrl} alt="Preview" className="w-full h-full object-cover" />
+              <img src={heroImageUrl} alt="Preview" className="w-full h-full object-cover" />
             </div>
           )}
           <p className="mt-2 text-xs text-gray-500">
@@ -257,9 +256,9 @@ export default function Configuracoes() {
             Adicionar Carrossel
           </button>
         </div>
-        
+
         <p className="text-sm text-gray-500 mb-6">
-          Configure as seções de produtos que aparecem na tela inicial (abaixo do Hero). 
+          Configure as seções de produtos que aparecem na tela inicial (abaixo do Hero).
           Você pode escolher entre Categorias, Mais Vendidos, Lançamentos, etc.
         </p>
 
@@ -305,7 +304,7 @@ export default function Configuracoes() {
                       </select>
                     </div>
                   </div>
-                  
+
                   {carousel.tipo === 'categoria' && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Selecione a Categoria</label>
@@ -326,7 +325,7 @@ export default function Configuracoes() {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex flex-col gap-2 pt-5">
                   <button
                     onClick={() => {
@@ -339,30 +338,30 @@ export default function Configuracoes() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                   <div className="flex gap-1">
-                     <button 
-                       disabled={index === 0}
-                       onClick={() => {
-                         const newCarousels = [...landingCarousels];
-                         [newCarousels[index - 1], newCarousels[index]] = [newCarousels[index], newCarousels[index - 1]];
-                         setLandingCarousels(newCarousels);
-                       }}
-                       className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-30"
-                       title="Subir"
-                     >
-                       ↑
-                     </button>
-                     <button 
-                       disabled={index === landingCarousels.length - 1}
-                       onClick={() => {
-                         const newCarousels = [...landingCarousels];
-                         [newCarousels[index + 1], newCarousels[index]] = [newCarousels[index], newCarousels[index + 1]];
-                         setLandingCarousels(newCarousels);
-                       }}
-                       className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-30"
-                       title="Descer"
-                     >
-                       ↓
-                     </button>
+                    <button
+                      disabled={index === 0}
+                      onClick={() => {
+                        const newCarousels = [...landingCarousels];
+                        [newCarousels[index - 1], newCarousels[index]] = [newCarousels[index], newCarousels[index - 1]];
+                        setLandingCarousels(newCarousels);
+                      }}
+                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-30"
+                      title="Subir"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      disabled={index === landingCarousels.length - 1}
+                      onClick={() => {
+                        const newCarousels = [...landingCarousels];
+                        [newCarousels[index + 1], newCarousels[index]] = [newCarousels[index], newCarousels[index + 1]];
+                        setLandingCarousels(newCarousels);
+                      }}
+                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-30"
+                      title="Descer"
+                    >
+                      ↓
+                    </button>
                   </div>
                 </div>
               </div>
