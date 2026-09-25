@@ -434,3 +434,14 @@ entrypoint = "./functions/mercadopago-webhook/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/mercadopago-webhook/*.html" ]
+
+[functions.generate-return-label]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/generate-return-label/index.ts"
+
+[functions.send-return-email]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/send-return-email/index.ts"
+

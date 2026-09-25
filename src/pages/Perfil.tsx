@@ -1,7 +1,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Fuuter } from '../components/Fuuter';
 import { User, Mail, Phone, Hash, Save, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Package, Star, X, MessageSquare, Truck } from 'lucide-react';
@@ -69,8 +69,10 @@ export default function Perfil() {
             devolucoes (
               id,
               status,
+              motivo_recusa,
               etiqueta_url,
-              rastreio
+              rastreio,
+              valor_credito
             )
           `)
           .eq('enderecos.usuario_id', user.id)
@@ -199,7 +201,7 @@ export default function Perfil() {
             tamanho,
             produtos (id, nome, imagem_principal)
           ),
-          devolucoes (id, status, etiqueta_url, rastreio)
+          devolucoes (id, status, motivo_recusa, etiqueta_url, rastreio, valor_credito)
         `)
         .eq('enderecos.usuario_id', user.id)
         .order('data_pedido', { ascending: false });
@@ -525,25 +527,107 @@ export default function Perfil() {
                               <span className="text-gray-900 font-medium">R$ {Number(pedido.frete).toFixed(2).replace('.', ',')}</span>
                             </div>
 
-                            {/* Seção de Devolução */}
+                              {/* Seção de Devolução */}
                             <div className="pt-4 mt-4 border-t border-gray-200 px-2">
                               {pedido.devolucoes && pedido.devolucoes.length > 0 ? (
-                                <div className="bg-orange-50 border border-orange-100 p-4 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
-                                  <div>
-                                    <p className="text-sm font-semibold text-orange-800">Solicitação de Devolução</p>
-                                    <p className="text-xs text-orange-600">Status: {pedido.devolucoes[0].status.replace('_', ' ').toUpperCase()}</p>
-                                  </div>
-                                  {pedido.devolucoes[0].etiqueta_url && (
-                                    <a 
-                                      href={pedido.devolucoes[0].etiqueta_url} 
-                                      target="_blank" 
-                                      rel="noreferrer"
-                                      className="text-xs font-medium bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors"
-                                    >
-                                      Imprimir Etiqueta
-                                    </a>
-                                  )}
-                                </div>
+                                (() => {
+                                  const dev = pedido.devolucoes[0];
+                                  return (
+                                    <div className="bg-gray-50/80 border border-gray-200/80 rounded-xl p-4">
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200/60">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-xs font-semibold text-gray-700">Solicitação de Devolução:</span>
+                                          {dev.status === 'pendente' && (
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                              Em Análise
+                                            </span>
+                                          )}
+                                          {(dev.status === 'etiqueta_gerada' || dev.status === 'gerando') && (
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                              Aguardando Postagem
+                                            </span>
+                                          )}
+                                          {dev.status === 'recebido_loja' && (
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                              Produto em Conferência na Loja
+                                            </span>
+                                          )}
+                                          {dev.status === 'credito_liberado' && (
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                              Crédito Liberado
+                                            </span>
+                                          )}
+                                          {dev.status === 'recusada' && (
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                              Recusada
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <Link 
+                                          to="/devolucoes" 
+                                          className="text-xs text-vinho-700 hover:text-vinho-900 font-medium hover:underline flex items-center gap-1"
+                                        >
+                                          Ver regras e instruções de envio &rarr;
+                                        </Link>
+                                      </div>
+
+                                      <div className="mt-3 text-xs text-gray-600">
+                                        {dev.status === 'pendente' && (
+                                          <p>Sua solicitação foi recebida e está sendo avaliada por nossa equipe. Assim que aprovada, você receberá a etiqueta de postagem diretamente no seu e-mail.</p>
+                                        )}
+
+                                        {(dev.status === 'etiqueta_gerada' || dev.status === 'gerando') && (
+                                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div>
+                                              <p className="text-gray-800 font-medium">A etiqueta de envio foi enviada para o seu e-mail cadastrado.</p>
+                                              <p className="text-gray-500 mt-0.5">Embale o produto com proteção e poste em uma agência sem nenhum custo.</p>
+                                              {dev.rastreio && dev.rastreio !== 'GERADO_AGUARDANDO' && (
+                                                <p className="text-gray-700 mt-1 font-mono text-[11px]">Código de Rastreio: <strong>{dev.rastreio}</strong></p>
+                                              )}
+                                            </div>
+                                            {dev.etiqueta_url && (
+                                              <a
+                                                href={dev.etiqueta_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="shrink-0 px-3.5 py-1.5 bg-vinho-700 text-white rounded-md font-medium hover:bg-vinho-800 transition-colors shadow-sm text-center"
+                                              >
+                                                Baixar / Imprimir Etiqueta
+                                              </a>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {dev.status === 'recebido_loja' && (
+                                          <p className="text-purple-900 leading-relaxed">
+                                            Recebemos o pacote em nossa loja física! Nossos especialistas estão realizando a conferência das peças. Assim que concluída a inspeção, o crédito será disponibilizado em sua carteira para compras.
+                                          </p>
+                                        )}
+
+                                        {dev.status === 'credito_liberado' && (
+                                          <p className="text-emerald-800 font-medium leading-relaxed">
+                                            Devolução concluída com sucesso! O valor integral de R$ {Number(dev.valor_credito || pedido.total).toFixed(2).replace('.', ',')} já foi creditado na sua conta da loja para ser usado em novos pedidos no checkout.
+                                          </p>
+                                        )}
+
+                                        {dev.status === 'recusada' && (
+                                          <div className="bg-red-50 border border-red-200/80 rounded-lg p-3 text-red-800">
+                                            <p className="font-semibold text-xs text-red-900 mb-1">Motivo da Recusa informado pela loja:</p>
+                                            <p className="text-xs text-red-700 leading-relaxed font-medium">
+                                              {dev.motivo_recusa || 'A solicitação foi recusada por não atender aos requisitos da política de trocas e devoluções.'}
+                                            </p>
+                                            <p className="mt-2 text-[11px] text-red-600">
+                                              Caso precise de esclarecimentos adicionais, consulte nossa{' '}
+                                              <Link to="/devolucoes" className="underline font-semibold">página de orientações</Link>{' '}
+                                              ou entre em contato com nossa equipe.
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()
                               ) : (
                                 (pedido.status === 'pago' || pedido.status === 'approved' || pedido.status === 'enviado') && (
                                   <div className="flex justify-end">

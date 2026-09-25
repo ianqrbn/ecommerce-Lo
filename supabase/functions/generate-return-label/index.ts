@@ -164,20 +164,50 @@ Deno.serve(async (req) => {
       throw new Error(`Erro ao gerar etiqueta: ${JSON.stringify(generateData)}`)
     }
 
-    // Aqui precisariamos consultar o tracking real da etiqueta gerada, ou parsear a resposta
-    // Por simplicidade do exemplo e limites da API sandbox, as vezes o tracking demora uns segundos,
-    // mas a API geralmente retorna o tracking code dentro dos dados ou via endpoint /tracking.
-    // Vamos fazer um update básico:
     let trackingCode = 'GERADO_AGUARDANDO'
+    if (generateData && generateData[orderIdME] && generateData[orderIdME].tracking) {
+      trackingCode = generateData[orderIdME].tracking
+    }
 
-    // Atualiza o banco
+    // 5. Tenta obter o link público direto do PDF da etiqueta
+    let printUrl = `https://melhorenvio.com.br/painel/imprimir/${orderIdME}`
+    try {
+      const printResponse = await fetch(`${meApiUrl}/me/shipment/print`, {
+        method: 'POST',
+        headers: meHeaders,
+        body: JSON.stringify({ mode: 'public', orders: [orderIdME] })
+      })
+      const printData = await printResponse.json()
+      if (printData?.url) {
+        printUrl = printData.url
+      }
+    } catch (printErr) {
+      console.warn('Não foi possível obter URL pública imediata do PDF:', printErr)
+    }
+
+    // Atualiza o banco com a etiqueta e o status de etiqueta_gerada
     await supabase.from('devolucoes').update({
       status: 'etiqueta_gerada',
       rastreio: trackingCode,
-      etiqueta_url: `https://melhorenvio.com.br/painel/imprimir/${orderIdME}`
+      etiqueta_url: printUrl
     }).eq('id', devolucao_id)
 
-    return new Response(JSON.stringify({ success: true, melhor_envio_id: orderIdME }), {
+    // 6. Dispara o envio de e-mail automático com as orientações e link da etiqueta
+    try {
+      await supabase.functions.invoke('send-return-email', {
+        body: { devolucao_id }
+      })
+    } catch (emailErr) {
+      console.warn('Aviso: Falha ao disparar envio automático de e-mail:', emailErr)
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      melhor_envio_id: orderIdME,
+      etiqueta_url: printUrl,
+      rastreio: trackingCode,
+      message: 'Etiqueta gerada com sucesso e e-mail com orientações disparado!'
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

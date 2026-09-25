@@ -128,13 +128,13 @@ export default function Configuracoes() {
   }
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Configurações Gerais</h1>
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Frete e Envio</h2>
 
-        <div className="mb-4">
+        <div className="mb-4  max-w-1/2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             CEP de Origem (Remetente)
           </label>
@@ -173,7 +173,7 @@ export default function Configuracoes() {
           Hero Section (Capa da Loja)
         </h2>
 
-        <div className="mb-4">
+        <div className="mb-4 max-w-1/2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Imagem de Destaque
           </label>
@@ -213,7 +213,7 @@ export default function Configuracoes() {
           </p>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 max-w-1/2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Categoria do Botão "Explorar"
           </label>
@@ -243,7 +243,7 @@ export default function Configuracoes() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mt-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 ">
           <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
             <LayoutList className="w-5 h-5 text-gray-500" />
             Carrosséis da Página Inicial
