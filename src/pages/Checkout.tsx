@@ -22,8 +22,11 @@ export default function Checkout() {
   
   const [useCreditoLoja, setUseCreditoLoja] = useState(false);
   
+  const [deliveryMethod, setDeliveryMethod] = useState<'shipping' | 'pickup'>('shipping');
+  
   // Cálculos de Totais
-  const subtotalWithFrete = cartTotalWithDiscount + (selectedShipping ? Number(selectedShipping.price) : 0);
+  const freteCalculado = deliveryMethod === 'pickup' ? 0 : (selectedShipping ? Number(selectedShipping.price) : 0);
+  const subtotalWithFrete = cartTotalWithDiscount + freteCalculado;
   const creditoDisponivel = profile?.credito_loja || 0;
   const creditoAplicado = useCreditoLoja ? Math.min(creditoDisponivel, subtotalWithFrete) : 0;
   const finalTotal = subtotalWithFrete - creditoAplicado;
@@ -153,42 +156,66 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      // 1. Salvar ou atualizar Endereço
-      const { data: endData, error: endError } = await supabase
-        .from('enderecos')
-        .insert({
-          usuario_id: user.id,
-          cep: endereco.cep,
-          rua: endereco.rua,
-          numero: endereco.numero,
-          complemento: endereco.complemento,
-          bairro: endereco.bairro,
-          cidade: endereco.cidade,
-          estado: endereco.estado,
-          tipo: endereco.tipo
-        })
-        .select()
-        .single();
+      let endDataId = null;
 
-      if (endError) throw new Error('Erro ao salvar endereço: ' + endError.message);
+      // 1. Salvar ou atualizar Endereço (se for entrega)
+      if (deliveryMethod === 'shipping') {
+        const { data: endData, error: endError } = await supabase
+          .from('enderecos')
+          .insert({
+            usuario_id: user.id,
+            cep: endereco.cep,
+            rua: endereco.rua,
+            numero: endereco.numero,
+            complemento: endereco.complemento,
+            bairro: endereco.bairro,
+            cidade: endereco.cidade,
+            estado: endereco.estado,
+            tipo: endereco.tipo
+          })
+          .select()
+          .single();
+
+        if (endError) throw new Error('Erro ao salvar endereço: ' + endError.message);
+        endDataId = endData.id;
+      } else {
+        // Se for retirada, criamos um endereço dummy para manter a integridade do BD
+        const { data: endData, error: endError } = await supabase
+          .from('enderecos')
+          .insert({
+            usuario_id: user.id,
+            cep: '00000000',
+            rua: 'Retirada na Loja',
+            numero: 'SN',
+            bairro: 'Retirada',
+            cidade: 'Retirada',
+            estado: 'RT',
+            tipo: 'Retirada'
+          })
+          .select()
+          .single();
+        
+        if (endError) throw new Error('Erro ao salvar endereço de retirada: ' + endError.message);
+        endDataId = endData.id;
+      }
 
       // 2. Criar o Pedido
-      const frete = selectedShipping ? Number(selectedShipping.price) : 0;
+      const frete = deliveryMethod === 'pickup' ? 0 : (selectedShipping ? Number(selectedShipping.price) : 0);
       const total = cartTotalWithDiscount + frete;
 
       const { data: pedData, error: pedError } = await supabase
         .from('pedidos')
         .insert({
-          endereco_entrega_id: endData.id,
+          endereco_entrega_id: endDataId,
           status: 'pendente',
-          subtotal: cartTotal, // O subtotal original
+          subtotal: cartTotal,
           frete: frete,
-          total: total, // Total final cobrado (Subtotal - Desconto + Frete)
+          total: total,
           cupom_id: appliedCoupon?.id || null,
           desconto_aplicado: cartDiscount,
           forma_pagamento: 'mercado_pago',
           data_pedido: new Date().toISOString(),
-          melhor_envio_service_id: selectedShipping ? selectedShipping.id : 1, // Fallback para PAC(1)
+          melhor_envio_service_id: deliveryMethod === 'pickup' ? 0 : (selectedShipping ? selectedShipping.id : 1),
         })
         .select()
         .single();
@@ -320,57 +347,77 @@ export default function Checkout() {
           {/* Coluna Principal - Formulário */}
           <div className="lg:col-span-7 space-y-8">
             <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
-              <h2 className="text-xl font-serif text-gray-900 mb-6">Endereço de Entrega</h2>
+              <h2 className="text-xl font-serif text-gray-900 mb-6">Como deseja receber seu pedido?</h2>
+              
+              <div className="flex gap-4 mb-8">
+                <label className={`flex-1 flex flex-col items-center p-4 border rounded-lg cursor-pointer transition-colors ${deliveryMethod === 'shipping' ? 'border-vinho-600 bg-vinho-50 text-vinho-900' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <input type="radio" name="deliveryMethod" value="shipping" checked={deliveryMethod === 'shipping'} onChange={() => setDeliveryMethod('shipping')} className="sr-only" />
+                  <span className="font-medium">Entregar no meu Endereço</span>
+                </label>
+                <label className={`flex-1 flex flex-col items-center p-4 border rounded-lg cursor-pointer transition-colors ${deliveryMethod === 'pickup' ? 'border-vinho-600 bg-vinho-50 text-vinho-900' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <input type="radio" name="deliveryMethod" value="pickup" checked={deliveryMethod === 'pickup'} onChange={() => setDeliveryMethod('pickup')} className="sr-only" />
+                  <span className="font-medium">Retirar na Loja</span>
+                  <span className="text-xs mt-1 text-gray-500 text-center">Grátis</span>
+                </label>
+              </div>
 
-              <form id="checkout-form" onSubmit={handleCheckout} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                    <input required name="cep" value={endereco.cep} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="00000-000" />
-                  </div>
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
-                    <input required name="bairro" value={endereco.bairro} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                  </div>
+              {deliveryMethod === 'shipping' && (
+                <>
+                  <h2 className="text-xl font-serif text-gray-900 mb-6">Endereço de Entrega</h2>
 
-                  <div className="col-span-2 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Rua</label>
-                    <input required name="rua" value={endereco.rua} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                  </div>
+                  <form id="checkout-form" onSubmit={handleCheckout} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                        <input required name="cep" value={endereco.cep} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="00000-000" />
+                      </div>
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+                        <input required name="bairro" value={endereco.bairro} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                      </div>
 
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
-                    <input required name="numero" value={endereco.numero} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                  </div>
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Rua</label>
+                        <input required name="rua" value={endereco.rua} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                      </div>
 
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
-                    <input name="complemento" value={endereco.complemento} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="Opcional" />
-                  </div>
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                        <input required name="numero" value={endereco.numero} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                      </div>
 
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                    <input required name="cidade" value={endereco.cidade} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                  </div>
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                        <input name="complemento" value={endereco.complemento} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="Opcional" />
+                      </div>
 
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                    <input required name="estado" value={endereco.estado} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="UF" />
-                  </div>
-                </div>
-              </form>
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                        <input required name="cidade" value={endereco.cidade} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                      </div>
+
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                        <input required name="estado" value={endereco.estado} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="UF" />
+                      </div>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
             
-            <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
-              <h2 className="text-xl font-serif text-gray-900 mb-6">Opções de Entrega</h2>
-              <ShippingCalculator 
-                items={shippingItems} 
-                initialCep={endereco.cep} 
-                autoCalculate={true} 
-                onSelectOption={setSelectedShipping}
-                selectedOptionId={selectedShipping?.id}
-              />
-            </div>
+            {deliveryMethod === 'shipping' && (
+              <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
+                <h2 className="text-xl font-serif text-gray-900 mb-6">Opções de Entrega</h2>
+                <ShippingCalculator 
+                  items={shippingItems} 
+                  initialCep={endereco.cep} 
+                  autoCalculate={true} 
+                  onSelectOption={setSelectedShipping}
+                  selectedOptionId={selectedShipping?.id}
+                />
+              </div>
+            )}
           </div>
 
           {/* Coluna Lateral - Resumo e Pagamento */}
@@ -459,34 +506,35 @@ export default function Checkout() {
                       />
                       <span className="text-gray-700 font-medium">Usar Crédito em Loja (Saldo: R$ {creditoDisponivel.toFixed(2).replace('.', ',')})</span>
                     </label>
-                    {useCreditoLoja && creditoAplicado > 0 && (
-                      <div className="flex justify-between text-green-600 font-medium">
-                        <span>Crédito Aplicado</span>
-                        <span>- R$ {creditoAplicado.toFixed(2).replace('.', ',')}</span>
-                      </div>
-                    )}
                   </div>
                 )}
 
                 <div className="flex justify-between text-gray-600 pt-2 border-t border-gray-100">
                   <span>Frete</span>
-                  <span>{selectedShipping ? `R$ ${Number(selectedShipping.price).toFixed(2).replace('.', ',')}` : 'A calcular'}</span>
+                  <span>{freteCalculado === 0 ? 'Grátis (Retirada)' : `R$ ${freteCalculado.toFixed(2).replace('.', ',')}`}</span>
                 </div>
-                <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
+                {useCreditoLoja && creditoAplicado > 0 && (
+                  <div className="flex justify-between text-purple-600 font-medium pt-2 border-t border-gray-100">
+                    <span>Crédito Aplicado</span>
+                    <span>- R$ {creditoAplicado.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-medium text-gray-900 pt-4 border-t border-gray-100 mt-4">
                   <span>Total</span>
                   <span>R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
                 </div>
               </div>
 
               {!preferenceId ? (
-                <button
-                  type="submit"
-                  form="checkout-form"
-                  disabled={loading || cart.length === 0 || !selectedShipping}
-                  className="w-full bg-vinho-700 text-white py-3 rounded-md font-medium hover:bg-vinho-800 transition-colors disabled:opacity-50 flex justify-center"
-                >
-                  {loading ? 'Processando...' : !selectedShipping ? 'Selecione o Frete' : 'Ir para Pagamento'}
-                </button>
+                <div className="space-y-4">
+                  <button 
+                    onClick={handleCheckout}
+                    disabled={loading || (deliveryMethod === 'shipping' && !selectedShipping)}
+                    className="w-full bg-vinho-600 text-white px-6 py-4 font-medium hover:bg-vinho-700 transition-colors disabled:bg-gray-400"
+                  >
+                    {loading ? 'Processando...' : (deliveryMethod === 'shipping' && !selectedShipping) ? 'Selecione o Frete' : 'Ir para Pagamento'}
+                  </button>
+                </div>
               ) : (
                 renderWallet
               )}

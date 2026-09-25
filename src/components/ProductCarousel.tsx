@@ -79,7 +79,7 @@ export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarousel
 
   return (
     <section className="py-16 px-4 bg-white relative">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-serif text-gray-900 mb-2">{titulo}</h2>
         </div>
@@ -89,12 +89,12 @@ export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarousel
             <span className="text-gray-400">Carregando produtos...</span>
           </div>
         ) : (
-          <div className="relative group">
+          <div className="relative group max-w-[1900px] w-full mx-auto px-4 md:px-12">
 
             {/* Botão de Voltar - Visível apenas no hover da área do carrossel no Desktop */}
             <button
               onClick={() => scroll('left')}
-              className="absolute -left-4 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
+              className="absolute left-1 md:left-2 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
               aria-label="Anterior"
             >
               <ChevronLeft className="w-6 h-6" />
@@ -103,7 +103,7 @@ export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarousel
             {/* Container do Carrossel */}
             <div
               ref={carouselRef}
-              className="flex gap-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
+              className="flex gap-6 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Esconde a barra de rolagem no Firefox e IE
             >
               {products.map((product) => (
@@ -120,7 +120,7 @@ export function ProductCarousel({ titulo, tipo, categoriaSlug }: ProductCarousel
             {/* Botão de Avançar */}
             <button
               onClick={() => scroll('right')}
-              className="absolute -right-4 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
+              className="absolute right-1 md:right-2 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
               aria-label="Próximo"
             >
               <ChevronRight className="w-6 h-6" />
