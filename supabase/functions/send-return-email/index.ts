@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; color: #333333;">
         <div style="background-color: #581c2d; padding: 24px; text-align: center;">
           <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 1px;">ERRO SILVER</h1>
-          <p style="color: #e5c5cb; margin: 4px 0 0 0; font-size: 13px;">Autorização de Devolução</p>
+          <p style="color: #ffffff; margin: 4px 0 0 0; font-size: 13px;">Autorização de Devolução</p>
         </div>
 
         <div style="padding: 32px 24px;">
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
           </ol>
 
           <p style="font-size: 13px; color: #6b7280; margin-top: 24px;">
-            Para mais dúvidas sobre o processo, consulte nossa página de <a href="https://lojoias.com.br/devolucoes" style="color: #581c2d; font-weight: 500;">Orientações de Devolução</a>.
+            Para mais dúvidas sobre o processo, consulte nossa página de <a href="https://ecommerce-lo.vercel.app/devolucoes" style="color: #581c2d; font-weight: 500;">Orientações de Devolução</a>.
           </p>
         </div>
 
@@ -95,11 +95,11 @@ Deno.serve(async (req) => {
     `
 
     if (!resendApiKey) {
-      console.warn('RESEND_API_KEY não configurada. E-mail simulado com sucesso.')
+      console.warn('API Key não encontrada')
       return new Response(JSON.stringify({
         success: true,
         simulated: true,
-        message: 'RESEND_API_KEY não configurada no Supabase Secrets. O e-mail foi preparado, mas precisa da chave para envio real.',
+        message: 'O e-mail foi preparado, mas precisa da chave para envio.',
         destinatario: clienteEmail,
         etiqueta_url: etiquetaUrl
       }), {
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: fromEmail,
         to: [clienteEmail],
-        subject: `Etiqueta de Devolução - Pedido #${pedidoId} | Lo Jóias`,
+        subject: `Etiqueta de Devolução - Pedido #${pedidoId} | ERRO SILVER`,
         html: htmlContent
       })
     })

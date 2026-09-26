@@ -54,11 +54,11 @@ export function CategoryShowcase() {
             <span className="text-gray-400">Carregando coleções...</span>
           </div>
         ) : (
-          <div className="relative group">
+          <div className="relative group max-w-[1795px] w-full mx-auto px-4 md:px-12">
             {/* Botão de Voltar */}
             <button
               onClick={() => scroll('left')}
-              className="absolute -left-4 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
+              className="absolute left-1 md:left-2 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
               aria-label="Anterior"
             >
               <ChevronLeft className="w-6 h-6" />
@@ -67,7 +67,7 @@ export function CategoryShowcase() {
             {/* Container do Carrossel */}
             <div
               ref={carouselRef}
-              className="flex gap-8 justify-center overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
+              className="flex gap-6 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {categories.map((category) => (
@@ -107,8 +107,7 @@ export function CategoryShowcase() {
             {/* Botão de Avançar */}
             <button
               onClick={() => scroll('right')}
-              className="absolute -right-4 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
-              aria-label="Próximo"
+              className="absolute right-1 md:right-2 top-1/3 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow-md text-gray-800 hover:text-vinho-700 hover:bg-gray-50 transition-all opacity-0 group-hover:opacity-100 hidden md:block focus:outline-none"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
