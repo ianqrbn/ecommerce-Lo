@@ -13,6 +13,7 @@ export function CupomFormModal({ isOpen, onClose, onSave, cupom }: CupomFormModa
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     codigo: '',
+    descricao: '',
     tipo: 'porcentagem',
     valor: '',
     ativo: true,
@@ -24,6 +25,7 @@ export function CupomFormModal({ isOpen, onClose, onSave, cupom }: CupomFormModa
     if (cupom) {
       setFormData({
         codigo: cupom.codigo,
+        descricao: cupom.descricao,
         tipo: cupom.tipo,
         valor: cupom.valor.toString(),
         ativo: cupom.ativo,
@@ -33,6 +35,7 @@ export function CupomFormModal({ isOpen, onClose, onSave, cupom }: CupomFormModa
     } else {
       setFormData({
         codigo: '',
+        descricao: '',
         tipo: 'porcentagem',
         valor: '',
         ativo: true,
@@ -51,6 +54,7 @@ export function CupomFormModal({ isOpen, onClose, onSave, cupom }: CupomFormModa
     try {
       const dataToSave = {
         codigo: formData.codigo.toUpperCase().trim(),
+        descricao: formData.descricao,
         tipo: formData.tipo,
         valor: parseFloat(formData.valor),
         ativo: formData.ativo,
@@ -95,6 +99,18 @@ export function CupomFormModal({ isOpen, onClose, onSave, cupom }: CupomFormModa
               onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase() })}
               placeholder="Ex: BEMVINDO10"
               className="w-full px-3 py-2 border rounded-md uppercase"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Descrição do Cupom</label>
+            <input
+              type="text"
+              required
+              value={formData.descricao}
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+              placeholder="Ex: Cupom de boas-vindas"
+              className="w-full px-3 py-2 border rounded-md"
             />
           </div>
 
