@@ -86,7 +86,7 @@ export default function Dashboard() {
           countPendentes++;
         }
 
-        if (p.status === 'pago') {
+        if (p.status === 'pago' || p.status === 'entregue' || p.status === 'enviado') {
           somaGeral += valor;
 
           // Venda Presencial vs Online
@@ -440,8 +440,10 @@ export default function Dashboard() {
                       <td className="px-6 py-4 text-right">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                            venda.status === 'pago'
+                            venda.status === 'pago' || venda.status === 'entregue'
                               ? 'bg-emerald-100 text-emerald-800'
+                              : venda.status === 'enviado'
+                              ? 'bg-blue-100 text-blue-800'
                               : venda.status === 'cancelado'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-amber-100 text-amber-800'

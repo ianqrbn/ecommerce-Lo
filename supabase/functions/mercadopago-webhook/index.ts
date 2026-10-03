@@ -69,6 +69,19 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({ pedido_id: externalReference })
         }).catch(err => console.error('Falha ao disparar geração de etiqueta:', err));
+
+        // Dispara o e-mail de confirmação de pagamento para o cliente
+        fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}` // Service Role
+          },
+          body: JSON.stringify({ 
+            pedido_id: externalReference, 
+            tipo: 'pagamento_confirmado' 
+          })
+        }).catch(err => console.error('Falha ao disparar e-mail de pagamento aprovado:', err));
       }
     }
 

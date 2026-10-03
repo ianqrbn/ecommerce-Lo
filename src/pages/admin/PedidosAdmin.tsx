@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Package, RefreshCw, Printer, AlertTriangle, Plus, Store } from 'lucide-react';
+import { Package, RefreshCw, Printer, AlertTriangle, Plus, Store, CheckCircle2, Mail, Send, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function PedidosAdmin() {
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [emailSendingId, setEmailSendingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchPedidos();
@@ -25,7 +26,7 @@ export default function PedidosAdmin() {
           usuarios (nome, email)
         )
       `)
-      .eq('status', 'pago')
+      .in('status', ['pago', 'enviado', 'entregue'])
       .order('data_pedido', { ascending: false });
 
     if (error) {
@@ -39,7 +40,6 @@ export default function PedidosAdmin() {
   const handleImprimir = async (melhor_envio_id: string, pedidoId: number) => {
     setProcessingId(pedidoId);
     try {
-      // Em produção, isso seria feito através de uma chamada autenticada e usando a URL correta do Edge Function
       const { data: funcData, error } = await supabase.functions.invoke('print-shipping-label', {
         body: { order_id_me: melhor_envio_id }
       });
@@ -50,8 +50,6 @@ export default function PedidosAdmin() {
         window.open(funcData.url, '_blank');
         fetchPedidos();
       } else {
-        // As vezes a API do ME devolve o pdf diretamente ou num formato diferente, 
-        // mas assumindo que devolve no padrão JSON de print.
         const urlArray = Object.values(funcData);
         if (urlArray.length > 0 && typeof urlArray[0] === 'string' && urlArray[0].startsWith('http')) {
            window.open(urlArray[0] as string, '_blank');
@@ -93,17 +91,104 @@ export default function PedidosAdmin() {
     }
   };
 
+  // Marcar como entregue e disparar e-mail de pós-venda (agradecimento + cuidados com a joia)
+  const handleMarcarEntregue = async (pedidoId: number) => {
+    if (!window.confirm(`Deseja marcar o pedido #${pedidoId} como ENTREGUE?\nO cliente receberá um e-mail especial de agradecimento com dicas de cuidados com a joia.`)) {
+      return;
+    }
+
+    setProcessingId(pedidoId);
+    try {
+      // 1. Atualiza status no banco
+      const { error: updateError } = await supabase
+        .from('pedidos')
+        .update({ status: 'entregue' })
+        .eq('id', pedidoId);
+
+      if (updateError) throw updateError;
+
+      // 2. Dispara e-mail de entrega & agradecimento
+      const { error: emailError } = await supabase.functions.invoke('send-order-email', {
+        body: { pedido_id: pedidoId, tipo: 'pedido_entregue' }
+      });
+
+      if (emailError) {
+        console.warn('Aviso: Pedido atualizado, mas falhou ao enviar e-mail:', emailError);
+        alert('Pedido marcado como Entregue! (Houve uma ressalva no envio do e-mail)');
+      } else {
+        alert(`Pedido #${pedidoId} marcado como Entregue!\nE-mail de agradecimento e cuidados enviado ao cliente.`);
+      }
+
+      fetchPedidos();
+    } catch (err: any) {
+      console.error('Erro ao marcar pedido como entregue:', err);
+      alert('Erro ao atualizar status: ' + err.message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Disparar e-mail manualmente (Reenvio)
+  const handleDispararEmailManual = async (pedidoId: number, tipo: 'pagamento_confirmado' | 'pedido_entregue') => {
+    const nomeAcao = tipo === 'pagamento_confirmado' ? 'Confirmação de Pagamento' : 'Agradecimento & Entrega';
+    if (!window.confirm(`Deseja reenviar o e-mail de "${nomeAcao}" para o cliente do pedido #${pedidoId}?`)) {
+      return;
+    }
+
+    setEmailSendingId(pedidoId);
+    try {
+      const { error } = await supabase.functions.invoke('send-order-email', {
+        body: { pedido_id: pedidoId, tipo }
+      });
+
+      if (error) throw error;
+      alert(`E-mail de "${nomeAcao}" reenviado com sucesso!`);
+    } catch (err: any) {
+      console.error('Erro ao reenviar e-mail:', err);
+      alert('Erro ao enviar e-mail: ' + err.message);
+    } finally {
+      setEmailSendingId(null);
+    }
+  };
+
   const renderEtiquetaStatus = (pedido: any) => {
-    if (pedido.status !== 'pago') {
-      return <span className="text-gray-400 text-xs">Aguardando Pagamento</span>;
+    if (pedido.status === 'entregue') {
+      return (
+        <div className="flex flex-col items-end gap-1.5">
+          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Entregue
+          </span>
+          <button
+            onClick={() => handleDispararEmailManual(pedido.id, 'pedido_entregue')}
+            disabled={emailSendingId === pedido.id}
+            className="text-[11px] text-gray-500 hover:text-vinho-700 underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            title="Reenviar e-mail de agradecimento e cuidados"
+          >
+            <Mail className="w-3 h-3" />
+            {emailSendingId === pedido.id ? 'Enviando...' : 'Reenviar E-mail'}
+          </button>
+        </div>
+      );
     }
 
     if (pedido.melhor_envio_service_id === 0 || pedido.etiqueta_status === 'presencial') {
       return (
-        <span className="inline-flex items-center gap-1 bg-vinho-50 text-vinho-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-vinho-200">
-          <Store className="w-3 h-3" />
-          Venda Balcão / Presencial
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          <span className="inline-flex items-center gap-1 bg-vinho-50 text-vinho-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-vinho-200">
+            <Store className="w-3 h-3" />
+            Venda Balcão / Presencial
+          </span>
+          <button
+            onClick={() => handleMarcarEntregue(pedido.id)}
+            disabled={processingId === pedido.id}
+            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-700 text-white text-xs font-medium rounded hover:bg-emerald-800 transition shadow-xs cursor-pointer disabled:opacity-50"
+            title="Marcar como entregue e disparar e-mail de agradecimento"
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            Marcar Entregue
+          </button>
+        </div>
       );
     }
 
@@ -114,28 +199,48 @@ export default function PedidosAdmin() {
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
             Etiqueta Impressa
           </span>
-          <button
-            onClick={() => handleImprimir(pedido.melhor_envio_id, pedido.id)}
-            disabled={processingId === pedido.id}
-            className="flex items-center gap-2 px-3 py-1 bg-white text-gray-600 border border-gray-200 text-xs rounded hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
-          >
-            {processingId === pedido.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
-            Reimprimir
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleImprimir(pedido.melhor_envio_id, pedido.id)}
+              disabled={processingId === pedido.id}
+              className="flex items-center gap-1 px-2.5 py-1 bg-white text-gray-600 border border-gray-200 text-xs rounded hover:bg-gray-50 transition shadow-xs disabled:opacity-50"
+            >
+              {processingId === pedido.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+              Reimprimir
+            </button>
+            <button
+              onClick={() => handleMarcarEntregue(pedido.id)}
+              disabled={processingId === pedido.id}
+              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-700 text-white text-xs font-medium rounded hover:bg-emerald-800 transition shadow-xs cursor-pointer disabled:opacity-50"
+              title="Marcar como entregue e enviar e-mail de agradecimento"
+            >
+              <Check className="w-3 h-3" />
+              Entregue
+            </button>
+          </div>
         </div>
       );
     }
 
     if (pedido.etiqueta_status === 'gerada') {
       return (
-        <button
-          onClick={() => handleImprimir(pedido.melhor_envio_id, pedido.id)}
-          disabled={processingId === pedido.id}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-        >
-          {processingId === pedido.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
-          Imprimir Etiqueta
-        </button>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={() => handleImprimir(pedido.melhor_envio_id, pedido.id)}
+            disabled={processingId === pedido.id}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition shadow-xs disabled:opacity-50"
+          >
+            {processingId === pedido.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+            Imprimir Etiqueta
+          </button>
+          <button
+            onClick={() => handleMarcarEntregue(pedido.id)}
+            disabled={processingId === pedido.id}
+            className="text-xs text-emerald-700 hover:text-emerald-800 font-medium underline flex items-center gap-1"
+          >
+            Marcar Entregue
+          </button>
+        </div>
       );
     }
 
@@ -148,7 +253,7 @@ export default function PedidosAdmin() {
           <button
             onClick={() => handleTentarGerar(pedido.id)}
             disabled={processingId === pedido.id}
-            className="flex items-center justify-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded hover:bg-gray-800 transition disabled:opacity-50"
           >
             {processingId === pedido.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
             Tentar Novamente
@@ -157,8 +262,19 @@ export default function PedidosAdmin() {
       );
     }
 
-    // Pendente ou outro
-    return <span className="text-yellow-600 text-xs">Gerando etiqueta...</span>;
+    // Padrão com ação de entrega
+    return (
+      <div className="flex flex-col items-end gap-1.5">
+        <span className="text-yellow-600 text-xs">Processando envio...</span>
+        <button
+          onClick={() => handleMarcarEntregue(pedido.id)}
+          disabled={processingId === pedido.id}
+          className="text-xs text-emerald-700 hover:text-emerald-900 font-medium underline flex items-center gap-1"
+        >
+          Marcar Entregue
+        </button>
+      </div>
+    );
   };
 
   if (loading) {
@@ -240,12 +356,14 @@ export default function PedidosAdmin() {
                         <div className="text-xs text-gray-500">{subinfo}</div>
                       </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        pedido.status === 'entregue' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
                         pedido.status === 'pago' ? 'bg-green-100 text-green-800' :
+                        pedido.status === 'enviado' ? 'bg-blue-100 text-blue-800' :
                         pedido.status === 'cancelado' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {pedido.status.toUpperCase()}
+                        {pedido.status === 'entregue' ? 'ENTREGUE' : pedido.status.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-900">
