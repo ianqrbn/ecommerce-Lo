@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Settings, LogOut, Store, FileText, Tag, Ticket, RotateCcw } from 'lucide-react';
+import { LayoutDashboard, Package, Settings, LogOut, Store, FileText, Tag, Ticket, RotateCcw, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AdminLayout() {
@@ -9,6 +9,7 @@ export default function AdminLayout() {
 
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Registrar Venda', path: '/admin/nova-venda', icon: ShoppingBag },
     { name: 'Pedidos', path: '/admin/pedidos', icon: FileText },
     { name: 'Devoluções', path: '/admin/devolucoes', icon: RotateCcw },
     { name: 'Produtos', path: '/admin/produtos', icon: Package },

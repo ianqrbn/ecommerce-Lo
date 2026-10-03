@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Package, RefreshCw, Printer, AlertTriangle } from 'lucide-react';
+import { Package, RefreshCw, Printer, AlertTriangle, Plus, Store } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function PedidosAdmin() {
   const [pedidos, setPedidos] = useState<any[]>([]);
@@ -18,6 +19,7 @@ export default function PedidosAdmin() {
       .select(`
         *,
         enderecos (
+          rua,
           cidade,
           estado,
           usuarios (nome, email)
@@ -96,11 +98,11 @@ export default function PedidosAdmin() {
       return <span className="text-gray-400 text-xs">Aguardando Pagamento</span>;
     }
 
-    if (pedido.melhor_envio_service_id === 0) {
+    if (pedido.melhor_envio_service_id === 0 || pedido.etiqueta_status === 'presencial') {
       return (
-        <span className="inline-flex items-center gap-1 bg-vinho-50 text-vinho-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-vinho-200">
-          <Package className="w-3 h-3" />
-          Retirada na Loja
+        <span className="inline-flex items-center gap-1 bg-vinho-50 text-vinho-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-vinho-200">
+          <Store className="w-3 h-3" />
+          Venda Balcão / Presencial
         </span>
       );
     }
@@ -165,18 +167,29 @@ export default function PedidosAdmin() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-serif text-gray-900 flex items-center gap-2">
           <Package className="w-6 h-6 text-vinho-700" />
           Pedidos
         </h1>
-        <button 
-          onClick={fetchPedidos}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-vinho-700"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Atualizar
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={fetchPedidos}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-vinho-700 bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition shadow-xs cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Atualizar
+          </button>
+
+          <Link
+            to="/admin/nova-venda"
+            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-vinho-800 px-4 py-2 rounded-lg hover:bg-vinho-900 transition shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Venda Balcão
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -186,10 +199,10 @@ export default function PedidosAdmin() {
               <tr>
                 <th className="px-6 py-4 font-medium">Pedido ID</th>
                 <th className="px-6 py-4 font-medium">Data</th>
-                <th className="px-6 py-4 font-medium">Cliente</th>
+                <th className="px-6 py-4 font-medium">Cliente / Origem</th>
                 <th className="px-6 py-4 font-medium">Status Pgto</th>
                 <th className="px-6 py-4 font-medium">Total</th>
-                <th className="px-6 py-4 font-medium text-right">Logística</th>
+                <th className="px-6 py-4 font-medium text-right">Logística / Canal</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -200,25 +213,32 @@ export default function PedidosAdmin() {
                   </td>
                 </tr>
               ) : (
-                pedidos.map((pedido) => (
-                  <tr key={pedido.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">#{pedido.id}</td>
-                    <td className="px-6 py-4 text-gray-500">
-                      {(() => {
-                        const d = pedido.data_pedido;
-                        if (!d) return '';
-                        // Evita o bug de fuso horário onde "YYYY-MM-DD" vira meia noite UTC e cai pro dia anterior no Brasil
-                        if (d.length === 10) {
-                          const [ano, mes, dia] = d.split('-');
-                          return `${dia}/${mes}/${ano}`;
-                        }
-                        return new Date(d).toLocaleDateString('pt-BR');
-                      })()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{pedido.enderecos?.usuarios?.nome || 'Usuário Deletado'}</div>
-                      <div className="text-xs text-gray-500">{pedido.enderecos?.usuarios?.email}</div>
-                    </td>
+                pedidos.map((pedido) => {
+                  const rua = pedido.enderecos?.rua || '';
+                  const nomeCliente = rua.includes('Venda Presencial (')
+                    ? rua.replace('Venda Presencial (', '').replace(')', '')
+                    : pedido.enderecos?.usuarios?.nome || (pedido.melhor_envio_service_id === 0 ? 'Balcão / Presencial' : 'Usuário Deletado');
+                  
+                  const subinfo = pedido.enderecos?.usuarios?.email || (pedido.forma_pagamento ? `Pgto: ${pedido.forma_pagamento.toUpperCase()}` : 'Venda Física');
+
+                  return (
+                    <tr key={pedido.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-mono font-medium">#{pedido.id}</td>
+                      <td className="px-6 py-4 text-gray-500">
+                        {(() => {
+                          const d = pedido.data_pedido;
+                          if (!d) return '';
+                          if (d.length === 10) {
+                            const [ano, mes, dia] = d.split('-');
+                            return `${dia}/${mes}/${ano}`;
+                          }
+                          return new Date(d).toLocaleDateString('pt-BR');
+                        })()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{nomeCliente}</div>
+                        <div className="text-xs text-gray-500">{subinfo}</div>
+                      </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         pedido.status === 'pago' ? 'bg-green-100 text-green-800' :
@@ -235,9 +255,10 @@ export default function PedidosAdmin() {
                       {renderEtiquetaStatus(pedido)}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
+                );
+              })
+            )}
+          </tbody>
           </table>
         </div>
       </div>

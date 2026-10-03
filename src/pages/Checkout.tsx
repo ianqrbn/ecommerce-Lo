@@ -16,17 +16,14 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<any>(null);
-  
+
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
-  
+
   const [useCreditoLoja, setUseCreditoLoja] = useState(false);
-  
-  const [deliveryMethod, setDeliveryMethod] = useState<'shipping' | 'pickup'>('shipping');
-  
+
   // Cálculos de Totais
-  const freteCalculado = deliveryMethod === 'pickup' ? 0 : (selectedShipping ? Number(selectedShipping.price) : 0);
-  const subtotalWithFrete = cartTotalWithDiscount + freteCalculado;
+  const subtotalWithFrete = cartTotalWithDiscount + (selectedShipping ? Number(selectedShipping.price) : 0);
   const creditoDisponivel = profile?.credito_loja || 0;
   const creditoAplicado = useCreditoLoja ? Math.min(creditoDisponivel, subtotalWithFrete) : 0;
   const finalTotal = subtotalWithFrete - creditoAplicado;
@@ -34,36 +31,36 @@ export default function Checkout() {
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
-    
+
     try {
       const code = couponCode.toUpperCase().trim();
-      
+
       const { data, error } = await supabase
         .from('cupons')
         .select('*')
         .eq('codigo', code)
         .eq('ativo', true)
         .single();
-        
+
       if (error || !data) {
         throw new Error('Cupom inválido ou expirado.');
       }
-      
+
       if (data.data_validade && new Date(data.data_validade) < new Date()) {
         throw new Error('Cupom expirado.');
       }
-      
+
       if (data.quantidade_maxima && data.usos_atuais >= data.quantidade_maxima) {
         throw new Error('Este cupom já atingiu o limite de usos.');
       }
-      
+
       if (data.limite_por_cliente && user) {
         const { count, error: countError } = await supabase
           .from('pedidos')
           .select('*', { count: 'exact', head: true })
           .eq('cupom_id', data.id)
           .not('status', 'in', '("cancelado", "pendente")');
-          
+
         // Wait, we need to check if THIS user used it. 
         // Better: join with enderecos to filter by user.id
         const { data: userOrders } = await supabase
@@ -71,12 +68,12 @@ export default function Checkout() {
           .select('id, enderecos!inner(usuario_id)')
           .eq('cupom_id', data.id)
           .eq('enderecos.usuario_id', user.id);
-          
+
         if (userOrders && userOrders.length >= data.limite_por_cliente) {
           throw new Error('Você já atingiu o limite de usos para este cupom.');
         }
       }
-      
+
       setAppliedCoupon(data);
       alert('Cupom aplicado com sucesso!');
       setCouponCode('');
@@ -106,7 +103,7 @@ export default function Checkout() {
 
   const handleEnderecoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
-    
+
     // Máscara de CEP
     if (name === 'cep') {
       value = value.replace(/\D/g, '');
@@ -156,66 +153,42 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      let endDataId = null;
+      // 1. Salvar ou atualizar Endereço
+      const { data: endData, error: endError } = await supabase
+        .from('enderecos')
+        .insert({
+          usuario_id: user.id,
+          cep: endereco.cep,
+          rua: endereco.rua,
+          numero: endereco.numero,
+          complemento: endereco.complemento,
+          bairro: endereco.bairro,
+          cidade: endereco.cidade,
+          estado: endereco.estado,
+          tipo: endereco.tipo
+        })
+        .select()
+        .single();
 
-      // 1. Salvar ou atualizar Endereço (se for entrega)
-      if (deliveryMethod === 'shipping') {
-        const { data: endData, error: endError } = await supabase
-          .from('enderecos')
-          .insert({
-            usuario_id: user.id,
-            cep: endereco.cep,
-            rua: endereco.rua,
-            numero: endereco.numero,
-            complemento: endereco.complemento,
-            bairro: endereco.bairro,
-            cidade: endereco.cidade,
-            estado: endereco.estado,
-            tipo: endereco.tipo
-          })
-          .select()
-          .single();
-
-        if (endError) throw new Error('Erro ao salvar endereço: ' + endError.message);
-        endDataId = endData.id;
-      } else {
-        // Se for retirada, criamos um endereço dummy para manter a integridade do BD
-        const { data: endData, error: endError } = await supabase
-          .from('enderecos')
-          .insert({
-            usuario_id: user.id,
-            cep: '00000000',
-            rua: 'Retirada na Loja',
-            numero: 'SN',
-            bairro: 'Retirada',
-            cidade: 'Retirada',
-            estado: 'RT',
-            tipo: 'Retirada'
-          })
-          .select()
-          .single();
-        
-        if (endError) throw new Error('Erro ao salvar endereço de retirada: ' + endError.message);
-        endDataId = endData.id;
-      }
+      if (endError) throw new Error('Erro ao salvar endereço: ' + endError.message);
 
       // 2. Criar o Pedido
-      const frete = deliveryMethod === 'pickup' ? 0 : (selectedShipping ? Number(selectedShipping.price) : 0);
+      const frete = selectedShipping ? Number(selectedShipping.price) : 0;
       const total = cartTotalWithDiscount + frete;
 
       const { data: pedData, error: pedError } = await supabase
         .from('pedidos')
         .insert({
-          endereco_entrega_id: endDataId,
+          endereco_entrega_id: endData.id,
           status: 'pendente',
-          subtotal: cartTotal,
+          subtotal: cartTotal, // O subtotal original
           frete: frete,
-          total: total,
+          total: total, // Total final cobrado (Subtotal - Desconto + Frete)
           cupom_id: appliedCoupon?.id || null,
           desconto_aplicado: cartDiscount,
           forma_pagamento: 'mercado_pago',
           data_pedido: new Date().toISOString(),
-          melhor_envio_service_id: deliveryMethod === 'pickup' ? 0 : (selectedShipping ? selectedShipping.id : 1),
+          melhor_envio_service_id: selectedShipping ? selectedShipping.id : 1, // Fallback para PAC(1)
         })
         .select()
         .single();
@@ -347,77 +320,57 @@ export default function Checkout() {
           {/* Coluna Principal - Formulário */}
           <div className="lg:col-span-7 space-y-8">
             <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
-              <h2 className="text-xl font-serif text-gray-900 mb-6">Como deseja receber seu pedido?</h2>
-              
-              <div className="flex gap-4 mb-8">
-                <label className={`flex-1 flex flex-col items-center p-4 border rounded-lg cursor-pointer transition-colors ${deliveryMethod === 'shipping' ? 'border-vinho-600 bg-vinho-50 text-vinho-900' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <input type="radio" name="deliveryMethod" value="shipping" checked={deliveryMethod === 'shipping'} onChange={() => setDeliveryMethod('shipping')} className="sr-only" />
-                  <span className="font-medium">Entregar no meu Endereço</span>
-                </label>
-                <label className={`flex-1 flex flex-col items-center p-4 border rounded-lg cursor-pointer transition-colors ${deliveryMethod === 'pickup' ? 'border-vinho-600 bg-vinho-50 text-vinho-900' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <input type="radio" name="deliveryMethod" value="pickup" checked={deliveryMethod === 'pickup'} onChange={() => setDeliveryMethod('pickup')} className="sr-only" />
-                  <span className="font-medium">Retirar na Loja</span>
-                  <span className="text-xs mt-1 text-gray-500 text-center">Grátis</span>
-                </label>
-              </div>
+              <h2 className="text-xl font-serif text-gray-900 mb-6">Endereço de Entrega</h2>
 
-              {deliveryMethod === 'shipping' && (
-                <>
-                  <h2 className="text-xl font-serif text-gray-900 mb-6">Endereço de Entrega</h2>
+              <form id="checkout-form" onSubmit={handleCheckout} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                    <input required name="cep" value={endereco.cep} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="00000-000" />
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+                    <input required name="bairro" value={endereco.bairro} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                  </div>
 
-                  <form id="checkout-form" onSubmit={handleCheckout} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                        <input required name="cep" value={endereco.cep} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="00000-000" />
-                      </div>
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
-                        <input required name="bairro" value={endereco.bairro} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                      </div>
+                  <div className="col-span-2 md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rua</label>
+                    <input required name="rua" value={endereco.rua} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                  </div>
 
-                      <div className="col-span-2 md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Rua</label>
-                        <input required name="rua" value={endereco.rua} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                      </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                    <input required name="numero" value={endereco.numero} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                  </div>
 
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
-                        <input required name="numero" value={endereco.numero} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                      </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                    <input name="complemento" value={endereco.complemento} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="Opcional" />
+                  </div>
 
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
-                        <input name="complemento" value={endereco.complemento} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="Opcional" />
-                      </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                    <input required name="cidade" value={endereco.cidade} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
+                  </div>
 
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                        <input required name="cidade" value={endereco.cidade} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" />
-                      </div>
-
-                      <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                        <input required name="estado" value={endereco.estado} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="UF" />
-                      </div>
-                    </div>
-                  </form>
-                </>
-              )}
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <input required name="estado" value={endereco.estado} onChange={handleEnderecoChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-vinho-500 focus:border-vinho-500" placeholder="UF" />
+                  </div>
+                </div>
+              </form>
             </div>
-            
-            {deliveryMethod === 'shipping' && (
-              <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
-                <h2 className="text-xl font-serif text-gray-900 mb-6">Opções de Entrega</h2>
-                <ShippingCalculator 
-                  items={shippingItems} 
-                  initialCep={endereco.cep} 
-                  autoCalculate={true} 
-                  onSelectOption={setSelectedShipping}
-                  selectedOptionId={selectedShipping?.id}
-                />
-              </div>
-            )}
+
+            <div className="bg-white p-6 md:p-8 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-serif text-gray-900 mb-6">Opções de Entrega</h2>
+              <ShippingCalculator
+                items={shippingItems}
+                initialCep={endereco.cep}
+                autoCalculate={true}
+                onSelectOption={setSelectedShipping}
+                selectedOptionId={selectedShipping?.id}
+              />
+            </div>
           </div>
 
           {/* Coluna Lateral - Resumo e Pagamento */}
@@ -448,15 +401,15 @@ export default function Checkout() {
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Cupom de Desconto</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="Ex: PRIMEIRACOMPRA" 
+                        placeholder="Ex: PRIMEIRACOMPRA"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md uppercase focus:ring-vinho-500 focus:border-vinho-500 text-sm"
                       />
                     </div>
-                    <button 
+                    <button
                       type="button"
                       onClick={handleApplyCoupon}
                       disabled={couponLoading || !couponCode.trim()}
@@ -473,7 +426,7 @@ export default function Checkout() {
                         {appliedCoupon.tipo === 'porcentagem' ? `${appliedCoupon.valor}% de desconto` : `R$ ${appliedCoupon.valor.toFixed(2)} de desconto`}
                       </span>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setAppliedCoupon(null)}
                       className="text-red-600 text-xs hover:underline font-medium"
                     >
@@ -494,47 +447,46 @@ export default function Checkout() {
                     <span>- R$ {cartDiscount.toFixed(2).replace('.', ',')}</span>
                   </div>
                 )}
-                
+
                 {creditoDisponivel > 0 && (
                   <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         className="rounded text-vinho-700 focus:ring-vinho-700 cursor-pointer"
                         checked={useCreditoLoja}
                         onChange={(e) => setUseCreditoLoja(e.target.checked)}
                       />
                       <span className="text-gray-700 font-medium">Usar Crédito em Loja (Saldo: R$ {creditoDisponivel.toFixed(2).replace('.', ',')})</span>
                     </label>
+                    {useCreditoLoja && creditoAplicado > 0 && (
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span>Crédito Aplicado</span>
+                        <span>- R$ {creditoAplicado.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 <div className="flex justify-between text-gray-600 pt-2 border-t border-gray-100">
                   <span>Frete</span>
-                  <span>{freteCalculado === 0 ? 'Grátis (Retirada)' : `R$ ${freteCalculado.toFixed(2).replace('.', ',')}`}</span>
+                  <span>{selectedShipping ? `R$ ${Number(selectedShipping.price).toFixed(2).replace('.', ',')}` : 'A calcular'}</span>
                 </div>
-                {useCreditoLoja && creditoAplicado > 0 && (
-                  <div className="flex justify-between text-purple-600 font-medium pt-2 border-t border-gray-100">
-                    <span>Crédito Aplicado</span>
-                    <span>- R$ {creditoAplicado.toFixed(2).replace('.', ',')}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-lg font-medium text-gray-900 pt-4 border-t border-gray-100 mt-4">
+                <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
                   <span>Total</span>
                   <span>R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
                 </div>
               </div>
 
               {!preferenceId ? (
-                <div className="space-y-4">
-                  <button 
-                    onClick={handleCheckout}
-                    disabled={loading || (deliveryMethod === 'shipping' && !selectedShipping)}
-                    className="w-full bg-vinho-600 text-white px-6 py-4 font-medium hover:bg-vinho-700 transition-colors disabled:bg-gray-400"
-                  >
-                    {loading ? 'Processando...' : (deliveryMethod === 'shipping' && !selectedShipping) ? 'Selecione o Frete' : 'Ir para Pagamento'}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  form="checkout-form"
+                  disabled={loading || cart.length === 0 || !selectedShipping}
+                  className="w-full bg-vinho-700 text-white py-3 rounded-md font-medium hover:bg-vinho-800 transition-colors disabled:opacity-50 flex justify-center"
+                >
+                  {loading ? 'Processando...' : !selectedShipping ? 'Selecione o Frete' : 'Ir para Pagamento'}
+                </button>
               ) : (
                 renderWallet
               )}

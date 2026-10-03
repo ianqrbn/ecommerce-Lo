@@ -23,6 +23,7 @@ import CategoriasAdmin from './pages/admin/CategoriasAdmin'
 import PedidosAdmin from './pages/admin/PedidosAdmin'
 import CuponsAdmin from './pages/admin/CuponsAdmin'
 import DevolucoesAdmin from './pages/admin/DevolucoesAdmin'
+import NovaVendaAdmin from './pages/admin/NovaVendaAdmin'
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
         <Route path="/admin" element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
+            <Route path="nova-venda" element={<NovaVendaAdmin />} />
             <Route path="produtos" element={<ProdutosAdmin />} />
             <Route path="categorias" element={<CategoriasAdmin />} />
             <Route path="pedidos" element={<PedidosAdmin />} />
